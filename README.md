@@ -1,0 +1,2 @@
+# linkary
+🔗 Understand every link.
