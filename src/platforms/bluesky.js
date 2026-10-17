@@ -1,7 +1,7 @@
 'use strict';
 const { identity, profile } = require('./helpers.js');
 module.exports = function bluesky(url) {
-  const match = url.pathname.match(/^\/profile\/(did:plc:[a-z2-7]+|[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?:\/post\/([A-Za-z0-9]+))?\/?$/);
+  const match = url.pathname.match(/^\/profile\/(did:plc:[a-z2-7]{24}|[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?:\/post\/([A-Za-z0-9]+))?\/?$/);
   if (!match) return null;
   const did = match[1].startsWith('did:');
   const actor = did ? match[1] : match[1].toLowerCase();

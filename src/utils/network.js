@@ -11,7 +11,7 @@ function isPublicAddress(address) {
   const family = net.isIP(address);
   if (family === 4) {
     const [a, b, c] = address.split('.').map(Number);
-    return !(a === 0 || a === 10 || a === 127 || a >= 224 ||
+    return !(a === 0 || a === 10 || a === 127 || a >= 224 || address === '168.63.129.16' ||
       (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && (b === 168 || (b === 0 && (c === 0 || c === 2)) || (b === 88 && c === 99))) ||
@@ -19,6 +19,7 @@ function isPublicAddress(address) {
       (a === 203 && b === 0 && c === 113));
   }
   if (family === 6) {
+    if (address.includes('%')) return false;
     const canonical = new URL(`http://[${address}]/`).hostname.slice(1, -1);
     const [a, b] = canonical.split(':').map(s => parseInt(s || '0', 16));
     return a >= 0x2000 && a <= 0x3fff &&

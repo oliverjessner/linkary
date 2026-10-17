@@ -60,8 +60,8 @@ const fixtures = [
   ['https://vimeo.com/groups/shorts/videos/123', 'vimeo', 'video', '123', 'vimeo:video:123'],
   ['https://bsky.app/profile/alice.bsky.social', 'bluesky', 'profile', null, 'bluesky:handle:alice.bsky.social'],
   ['https://bsky.app/profile/alice.bsky.social/post/3abc', 'bluesky', 'post', '3abc', null],
-  ['https://bsky.app/profile/did:plc:abc234/post/3abc', 'bluesky', 'post', '3abc', 'bluesky:post:did:plc:abc234/3abc'],
-  ['https://bsky.app/profile/did:plc:abc234', 'bluesky', 'profile', 'did:plc:abc234', 'bluesky:did:did:plc:abc234'],
+  ['https://bsky.app/profile/did:plc:abcdefghijklmnopqrstuvwx/post/3abc', 'bluesky', 'post', '3abc', 'bluesky:post:did:plc:abcdefghijklmnopqrstuvwx/3abc'],
+  ['https://bsky.app/profile/did:plc:abcdefghijklmnopqrstuvwx', 'bluesky', 'profile', 'did:plc:abcdefghijklmnopqrstuvwx', 'bluesky:did:did:plc:abcdefghijklmnopqrstuvwx'],
 ];
 
 for (const [url, platform, resourceType, resourceId, identityKey] of fixtures) {
@@ -77,14 +77,16 @@ test('platform detection uses exact hosts and conservative path patterns', () =>
   }
   for (const url of [
     'https://youtube.com/watch?v=a&v=b', 'https://youtube.com/watch', 'https://youtube.com/playlist?list=a&list=b',
-    'https://youtube.com/channel/fake', 'https://youtu.be/a/extra', 'https://tiktok.com/share/video/123',
+    'https://youtube.com/channel/fake', 'https://youtu.be/a/extra', 'https://youtube.com/embed/videoseries?list=PL1',
+    'https://youtube.com/embed/live_stream?channel=UC1234567890123456789012', 'https://tiktok.com/share/video/123',
     'https://vm.tiktok.com/abc', 'https://vt.tiktok.com/abc', 'https://instagram.com/explore',
     'https://instagram.com/stories/alice/123', 'https://facebook.com/share/p/x', 'https://facebook.com/profile.php?id=1&id=2',
     'https://facebook.com/alice/posts/pfbid123', 'https://facebook.com/permalink.php?story_fbid=123',
     'https://x.com/search', 'https://threads.com/abc', 'https://reddit.com/r/node/wiki/test',
     'https://linkedin.com/jobs/view/123', 'https://twitch.tv/directory', 'https://clips.twitch.tv/embed',
-    'https://github.com/settings', 'https://github.com/owner/repo/tree/main', 'https://vimeo.com/manage/videos/123',
-    'https://bsky.app/profile/did:web:example.org',
+    'https://github.com/settings', 'https://github.com/owner/repo/tree/main', 'https://github.com/owner/repo.git', 'https://vimeo.com/manage/videos/123',
+    'https://bsky.app/profile/did:web:example.org', 'https://bsky.app/profile/did:plc:tooshort',
+    'https://facebook.com/watch?v=bad', 'https://facebook.com/robots.txt', 'https://instagram.com/robots.txt',
   ]) {
     const identity = identifyUrl(url);
     assert.equal(identity.resourceType, 'unknown', url);

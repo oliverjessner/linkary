@@ -1,11 +1,12 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { setTimeout: delay } = require('node:timers/promises');
 const { resolveUrl } = require('..');
 const { server } = require('./fixtures.js');
 
 test('process-local cache deduplicates in-flight work, clones results and honors expiry and bypass', async t => {
+  let now = 0;
+  t.mock.method(performance, 'now', () => now);
   const fixture = await server(t, (_req, res) => res.writeHead(204).end());
   const options = { unsafeAllowPrivate: true, cacheTtlMs: 80 };
   const [a, b] = await Promise.all([resolveUrl(fixture.url, options), resolveUrl(fixture.url, options)]);
@@ -15,7 +16,7 @@ test('process-local cache deduplicates in-flight work, clones results and honors
   assert.equal(b.redirects.length, 0);
   assert.equal((await resolveUrl(fixture.url, options)).redirects.length, 0);
   assert.equal(fixture.requests.length, 1);
-  await delay(100);
+  now = 100;
   await resolveUrl(fixture.url, options);
   assert.equal(fixture.requests.length, 2);
   await resolveUrl(fixture.url, { ...options, cacheTtlMs: 0 });
@@ -53,4 +54,15 @@ test('abort signals have independent request lifetimes and aborted calls cannot 
   await assert.rejects(aborted, { code: 'ERR_ABORTED' });
   assert.equal((await success).status, 204);
   await assert.rejects(resolveUrl(fixture.url, { ...options, signal: controller.signal }), { code: 'ERR_ABORTED' });
+});
+
+test('successful cache is bounded and evicts the oldest entry', async t => {
+  const fixture = await server(t, (_req, res) => res.writeHead(204).end());
+  const options = { unsafeAllowPrivate: true, cacheTtlMs: 120000 };
+  for (let i = 0; i < 257; i++) await resolveUrl(`${fixture.url}/${i}`, options);
+  assert.equal(fixture.requests.length, 257);
+  await resolveUrl(`${fixture.url}/256`, options);
+  assert.equal(fixture.requests.length, 257);
+  await resolveUrl(`${fixture.url}/0`, options);
+  assert.equal(fixture.requests.length, 258);
 });

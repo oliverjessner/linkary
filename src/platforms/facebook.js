@@ -24,6 +24,6 @@ module.exports = function facebook(url) {
   if ((match = url.pathname.match(/^\/([A-Za-z0-9.]+)\/videos\/(\d+)\/?$/))) return resource('facebook', 'video', match[2]);
   if ((match = url.pathname.match(/^\/groups\/(\d+)\/posts\/(\d+)\/?$/))) return resource('facebook', 'post', `${match[1]}/${match[2]}`, null, 'group-post');
   match = url.pathname.match(/^\/([A-Za-z0-9.]+)\/?$/);
-  if (!match || reserved.has(match[1].toLowerCase())) return null;
+  if (!match || reserved.has(match[1].toLowerCase()) || /\.(php|txt|ico|xml)$/i.test(match[1])) return null;
   return /^\d+$/.test(match[1]) ? resource('facebook', 'profile', match[1]) : profile('facebook', match[1]);
 };

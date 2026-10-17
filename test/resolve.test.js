@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const dns = require('node:dns').promises;
 const http = require('node:http');
+const https = require('node:https');
 const { EventEmitter } = require('node:events');
 const { server } = require('./fixtures.js');
 const { resolveUrl } = require('..');
@@ -82,7 +83,7 @@ test('connection failures and DNS errors are structured', async t => {
 
 test('default policy blocks special IPv4/IPv6 ranges and metadata without sending requests', async t => {
   const blocked = ['0.0.0.0', '10.1.2.3', '127.0.0.1', '169.254.169.254', '172.16.0.1', '172.31.255.255',
-    '192.168.1.1', '100.100.100.200', '100.64.0.1', '192.0.0.8', '192.0.2.1', '192.88.99.1',
+    '192.168.1.1', '100.100.100.200', '100.64.0.1', '192.0.0.8', '192.0.2.1', '192.88.99.1', '168.63.129.16',
     '198.18.0.1', '198.51.100.1', '203.0.113.1', '224.0.0.1', '255.255.255.255',
     '::', '::1', '::ffff:127.0.0.1', '::ffff:8.8.8.8', 'fc00::1', 'fe80::1', 'ff02::1',
     '64:ff9b::7f00:1', '2002:7f00:1::', '2001::1', '2001:db8::1', '3fff::1'];
@@ -144,4 +145,31 @@ test('network option validation rejects invalid values and credentials', async (
     await assert.rejects(resolveUrl('https://example.org', options), { code: 'ERR_INVALID_OPTIONS' });
   }
   await assert.rejects(resolveUrl('https://user:secret@example.org'), { code: 'ERR_CREDENTIALS' });
+});
+
+test('HTTPS retains hostname and native TLS verification; protocol upgrades fail', async t => {
+  t.mock.method(dns, 'lookup', async () => [{ address: '2606:4700:4700::1111', family: 6 }]);
+  t.mock.method(https, 'request', (url, options) => {
+    assert.equal(url.hostname, 'secure.example.org');
+    assert.equal(options.rejectUnauthorized, undefined); // native true default
+    assert.equal(options.servername, undefined); // derived natively from URL hostname
+    assert.equal(options.family, 6);
+    assert.equal(options.agent, false);
+    assert.deepEqual(options.headers, {});
+    const request = new EventEmitter();
+    request.end = () => queueMicrotask(() => request.emit('upgrade', {}, { destroy() {} }));
+    return request;
+  });
+  await assert.rejects(resolveUrl('https://secure.example.org/', { cacheTtlMs: 0 }), { code: 'ERR_HTTP_STATUS' });
+  assert.equal(isPublicAddress('fe80::1%lo0'), false);
+});
+
+test('cross-origin redirects send no caller authorization/cookie headers', async t => {
+  const destination = await server(t, (_req, res) => res.writeHead(204).end());
+  const source = await server(t, (_req, res) => res.writeHead(302, { Location: destination.url }).end());
+  await resolveUrl(source.url, { ...local, headers: { Authorization: 'secret', Cookie: 'session=secret' } });
+  for (const request of [...source.requests, ...destination.requests]) {
+    assert.equal(request.headers.authorization, undefined);
+    assert.equal(request.headers.cookie, undefined);
+  }
 });

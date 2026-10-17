@@ -13,6 +13,7 @@ module.exports = function youtube(url) {
     if (id && token.test(id)) return resource('youtube', 'video', id);
   }
   if ((match = path.match(/^\/(shorts|embed|live)\/([A-Za-z0-9_-]{1,128})\/?$/))) {
+    if (match[1] === 'embed' && ['videoseries', 'live_stream'].includes(match[2])) return null;
     return resource('youtube', match[1] === 'shorts' ? 'short' : 'video', match[2], null, 'video');
   }
   if (path === '/playlist') {
