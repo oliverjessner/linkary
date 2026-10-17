@@ -12,18 +12,44 @@
     },
     "./package.json": "./package.json"
   },
-  "bin": { "linkary": "./cli/index.js" },
-  "engines": { "node": ">=26" },
-  "files": ["src/", "cli/", "docs/", "README.md", "LICENSE"],
+  "bin": {
+    "linkary": "./cli/index.js"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "files": [
+    "src/",
+    "cli/",
+    "docs/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
     "test:types": "tsc -p test/types/tsconfig.json",
     "publish:check": "npm test && npm run test:types && npm pack --dry-run"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/oliverjessner/linkary.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oliverjessner/linkary.git"
+  },
   "homepage": "https://github.com/oliverjessner/linkary#readme",
-  "bugs": { "url": "https://github.com/oliverjessner/linkary/issues" },
-  "keywords": ["url", "osint", "redirect", "tracking", "social-media", "cli"],
-  "license": "MIT"
+  "bugs": {
+    "url": "https://github.com/oliverjessner/linkary/issues"
+  },
+  "keywords": [
+    "url",
+    "osint",
+    "redirect",
+    "tracking",
+    "social-media",
+    "cli"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
 }

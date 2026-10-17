@@ -77,7 +77,10 @@ function validateSignal(signal) {
 }
 
 function throwIfAborted(signal) {
-  if (signal?.aborted) throw new LinkaryError('ERR_ABORTED', 'Operation aborted.', { cause: signal.reason });
+  if (signal?.aborted) {
+    if (signal.reason instanceof LinkaryError && ['ERR_TIMEOUT', 'ERR_ABORTED'].includes(signal.reason.code)) throw signal.reason;
+    throw new LinkaryError('ERR_ABORTED', 'Operation aborted.', { cause: signal.reason });
+  }
 }
 
 module.exports = { LinkaryError, parseUrl, isValidUrl, extractHostname, extractQueryParams,
