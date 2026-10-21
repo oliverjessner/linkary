@@ -34,6 +34,28 @@ This returns `https://example.org/?id=7` as the cleaned URL and reports the remo
 
 See the [CLI documentation](docs/CLI.md) for all commands and options.
 
+## Library
+
+Use Linkary in Node.js to inspect, clean and compare URLs in your own scripts and applications. It supports CommonJS and ESM imports, includes TypeScript declarations and has no runtime dependencies.
+
+```js
+const { inspectUrl, cleanUrl, compareUrls } = require('linkary');
+// ESM: import { inspectUrl, cleanUrl, compareUrls } from 'linkary';
+
+const inspection = inspectUrl('https://youtu.be/abc123?utm_source=newsletter');
+console.log(inspection.platform); // 'youtube'
+
+const cleaned = cleanUrl('https://example.org/?id=7&utm_source=newsletter');
+console.log(cleaned.cleanUrl); // 'https://example.org/?id=7'
+
+const comparison = compareUrls('https://youtu.be/abc123', 'https://youtube.com/watch?v=abc123');
+console.log(comparison.sameResource); // true
+```
+
+These operations run synchronously and offline. Use `resolveUrl()` or `inspectMany(urls, { resolve: true })` for asynchronous redirect resolution.
+
+See the [Library API documentation](docs/LIBRARY.md) for all functions, return values and options.
+
 ## Clean links before sharing
 
 Remove common tracking parameters such as `utm_*`, `fbclid` and `gclid` without visiting the destination. Choose additional parameters to remove or explicitly preserve values you need; changing signed links can invalidate them.
