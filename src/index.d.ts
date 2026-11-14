@@ -21,9 +21,14 @@ export interface ShortlinkOptions {
 export interface UrlInspectionOptions extends UrlCleaningOptions, ShortlinkOptions {}
 
 export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'x' | 'threads'
-  | 'reddit' | 'linkedin' | 'twitch' | 'github' | 'vimeo' | 'bluesky';
+  | 'reddit' | 'linkedin' | 'twitch' | 'github' | 'vimeo' | 'bluesky'
+  | '4chan' | 'snapchat' | 'truthsocial' | 'pinterest' | 'discord' | 'tumblr' | 'telegram'
+  | 'whatsapp' | 'signal' | 'mastodon' | 'lemmy' | 'vk' | 'weibo' | 'ok'
+  | 'medium' | 'substack' | 'spotify' | 'soundcloud' | 'dailymotion' | 'rumble' | 'kick'
+  | 'flickr' | 'gitlab' | 'bilibili' | 'steam' | 'hackernews';
 export type ResourceType = 'profile' | 'channel' | 'video' | 'post' | 'reel' | 'short'
-  | 'playlist' | 'repository' | 'comment' | 'unknown';
+  | 'playlist' | 'repository' | 'comment' | 'thread' | 'message' | 'invite'
+  | 'track' | 'album' | 'artist' | 'show' | 'episode' | 'image' | 'unknown';
 
 export interface UrlInspectionResult {
   originalUrl: string;
@@ -54,6 +59,11 @@ export interface UrlCleanResult {
   cleanUrl: string;
   /** Decoded removed names in occurrence order, including duplicates. */
   removedParameters: string[];
+}
+
+export interface UrlPurgeResult extends UrlCleanResult {
+  /** Encoded removed fragment without '#', or null when absent/empty. */
+  removedFragment: string | null;
 }
 
 export interface UrlIdentity {
@@ -146,6 +156,8 @@ export class LinkaryError extends Error {
 export function inspectUrl(url: string, options?: UrlInspectionOptions): UrlInspectionResult;
 export function normalizeUrl(url: string, options?: UrlNormalizationOptions): string;
 export function cleanUrl(url: string, options?: UrlCleaningOptions): UrlCleanResult;
+/** Remove all query parameters and the fragment, including empty delimiters. */
+export function purgeUrl(url: string): UrlPurgeResult;
 export function resolveUrl(url: string, options?: UrlResolutionOptions): Promise<UrlResolutionResult>;
 export function identifyUrl(url: string, options?: Record<string, never>): UrlIdentity;
 export function compareUrls(urlA: string, urlB: string, options?: UrlCleaningOptions): UrlComparisonResult;

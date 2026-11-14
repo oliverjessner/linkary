@@ -14,6 +14,7 @@ const { inspectUrl, cleanUrl, identifyUrl, resolveUrl } = require('linkary');
 | `inspectUrl(url, options?)` | `UrlInspectionResult` | Cleaning, normalization, shortlinks |
 | `normalizeUrl(url, options?)` | `string` | `stripFragment` |
 | `cleanUrl(url, options?)` | `UrlCleanResult` | `stripFragment`, `removeParams`, `preserveParams` |
+| `purgeUrl(url)` | `UrlPurgeResult` | None; always removes the entire query and fragment |
 | `identifyUrl(url, options?)` | `UrlIdentity` | Empty reserved options object |
 | `compareUrls(a, b, options?)` | `UrlComparisonResult` | Cleaning and normalization |
 | `resolveUrl(url, options?)` | `Promise<UrlResolutionResult>` | Network options below |
@@ -26,7 +27,7 @@ const { inspectUrl, cleanUrl, identifyUrl, resolveUrl } = require('linkary');
 
 Only network operations return promises. `await inspectMany(urls)` also works for an offline array, but is unnecessary. Options must be objects when supplied. Shared option fields are validated; unknown option names are ignored and confer no functionality.
 
-`stripFragment` defaults to false. Explicitly setting it to true can change application routing/identity. `removeParams` and `preserveParams` are arrays of nonempty exact key names matched case insensitively. Preserve rules win over custom/default removal. `shortlinkDomains` adds exact hostnames without schemes, ports or paths, including internationalized names converted by URL parsing. The built-in shortlink registry is in `src/utils/shortlinks.js`.
+`stripFragment` defaults to false for normalization, cleaning and inspection. Explicitly setting it to true can change application routing/identity. `removeParams` and `preserveParams` are arrays of nonempty exact key names matched case insensitively. Preserve rules win over custom/default removal. `shortlinkDomains` adds exact hostnames without schemes, ports or paths, including internationalized names converted by URL parsing. The built-in shortlink registry is in `src/utils/shortlinks.js`.
 
 No operation upgrades HTTP, removes `www`, sorts query parameters, guesses an eTLD+1, resolves accounts or proves resource existence. Normalization retains escape spelling and does not decode unreserved characters speculatively; WHATWG parsing itself still resolves percent-encoded dot segments. Query keys and values are decoded only in inspection output, not rewritten in surviving query segments.
 
@@ -70,6 +71,25 @@ cleanUrl('https://example.org/?v=abc&campaign_id=7&utm_source=mail', {
 ```
 
 The default keys are `utm_*`, `fbclid`, `gclid`, `dclid`, `gbraid`, `wbraid`, `msclkid`, `ttclid`, `mc_cid`, `mc_eid`, `igsh`, `igshid`. Names in `removedParameters` are decoded and retain original case/occurrence order; repeated removed keys appear repeatedly. All surviving segments retain their original encoding, duplicates and order. Unknown parameters, `id`, `v`, `list`, `page`, `q`, `search`, `lang`, `ref` and `source` survive unless explicitly removed. A tracking key can itself be covered by a signature: cleaning can invalidate that signature. Use preservation rules or normalization only for such URLs.
+
+## Purging
+
+```js
+const { purgeUrl } = require('linkary');
+purgeUrl('https://example.org/page?id=7&utm_source=mail#section');
+// { originalUrl: 'https://example.org/page?id=7&utm_source=mail#section',
+//   cleanUrl: 'https://example.org/page',
+//   removedParameters: ['id', 'utm_source'], removedFragment: 'section' }
+```
+
+`purgeUrl` synchronously removes the entire query string and fragment, including
+empty `?` and `#` delimiters. It removes functional parameters as well as tracking
+parameters. Scheme, host, port and path use the same WHATWG normalization as
+`cleanUrl`. The usual HTTP(S) URL validation applies, and no network request is made.
+
+`removedParameters` lists decoded names in occurrence order, including duplicates.
+`removedFragment` is the encoded fragment without `#`, or `null` when absent or
+empty. The function has no removal or preservation options.
 
 ## Identification and comparison
 

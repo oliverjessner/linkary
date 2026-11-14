@@ -1,55 +1,61 @@
 {
-  "name": "linkary",
-  "version": "0.1.0",
-  "description": "Understand every link. Zero-dependency URL intelligence for Node.js.",
-  "type": "commonjs",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./src/index.d.ts",
-      "default": "./src/index.js"
+    "name": "linkary",
+    "version": "0.2.0",
+    "description": "Understand every link. Zero-dependency URL intelligence for Node.js.",
+    "type": "commonjs",
+    "main": "./src/index.js",
+    "types": "./src/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./src/index.d.ts",
+            "default": "./src/index.js"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "bin": {
-    "linkary": "./cli/index.js"
-  },
-  "engines": {
-    "node": ">=26"
-  },
-  "files": [
-    "src/",
-    "cli/",
-    "docs/",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "test": "node --test test/*.test.js",
-    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
-    "test:types": "tsc -p test/types/tsconfig.json",
-    "publish:check": "npm test && npm run test:types && npm pack --dry-run"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/oliverjessner/linkary.git"
-  },
-  "homepage": "https://github.com/oliverjessner/linkary#readme",
-  "bugs": {
-    "url": "https://github.com/oliverjessner/linkary/issues"
-  },
-  "keywords": [
-    "url",
-    "osint",
-    "redirect",
-    "tracking",
-    "social-media",
-    "cli"
-  ],
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^26.6.5",
-    "typescript": "^7.0.2"
-  }
+    "bin": {
+        "linkary": "./cli/index.js"
+    },
+    "engines": {
+        "node": ">=26"
+    },
+    "files": [
+        "src/",
+        "cli/",
+        "docs/",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "publish": "node scripts/publish.js",
+        "brew:publish": "node scripts/publish.js --skip-npm",
+        "test": "node --test test/*.test.js",
+        "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+        "test:types": "tsc -p test/types/tsconfig.json",
+        "publish:check": "npm test && npm run test:types && npm pack --dry-run"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/oliverjessner/linkary.git"
+    },
+    "homepage": "https://github.com/oliverjessner/linkary#readme",
+    "bugs": {
+        "url": "https://github.com/oliverjessner/linkary/issues"
+    },
+    "keywords": [
+        "url",
+        "osint",
+        "redirect",
+        "tracking",
+        "social-media",
+        "cli"
+    ],
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^26.6.5",
+        "typescript": "^7.0.2"
+    }
 }

@@ -3,6 +3,8 @@ const inspection: linkary.UrlInspectionResult = linkary.inspectUrl('https://exam
 const synchronous: linkary.BatchInspectionResult[] = linkary.inspectMany([inspection.originalUrl]);
 const asynchronous: Promise<linkary.BatchInspectionResult[]> = linkary.inspectMany([], { resolve: true });
 const clean: linkary.UrlCleanResult = linkary.cleanUrl(inspection.originalUrl, { preserveParams: ['v'] });
+const purged: linkary.UrlPurgeResult = linkary.purgeUrl('https://example.org/?id=7#section');
+const purgedFragment: string | null = purged.removedFragment;
 const identity: linkary.UrlIdentity = linkary.identifyUrl(clean.cleanUrl);
 const comparison: linkary.UrlComparisonResult = linkary.compareUrls(clean.cleanUrl, inspection.originalUrl);
 const resolution: Promise<linkary.UrlResolutionResult> = linkary.resolveUrl(clean.cleanUrl, { signal: new AbortController().signal });

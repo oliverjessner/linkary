@@ -10,8 +10,9 @@ Inspect a link to see its hostname, query parameters and recognized platform inf
 
 - Inspect HTTP and HTTPS links, including query parameters and known shortlink hosts.
 - Remove known tracking parameters while keeping other query values.
+- Purge all query parameters and URL fragments.
 - Normalize URL formatting while preserving meaningful path and query differences.
-- Recognize supported video, post, profile and repository links across twelve platforms.
+- Recognize supported social, messaging, media, forum and repository links across 38 platforms.
 - Compare original links, normalized forms, cleaned forms and supported resource identities.
 - Follow redirects to find a link's destination and report the redirect chain.
 - Process URL lists from a file or standard input, with optional duplicate removal.
@@ -27,10 +28,18 @@ Linkary requires Node.js 26 or newer. There is currently no published npm packag
 Inspect, clean, compare and resolve links, or process a whole URL list from the command line.
 
 ```sh
-linkary clean 'https://example.org/?id=7&utm_source=newsletter' --json
+linkary clean 'https://example.org/?id=7&utm_source=newsletter' --link
 ```
 
-This returns `https://example.org/?id=7` as the cleaned URL and reports the removed tracking parameter.
+This prints only `https://example.org/?id=7`. Use `--json` instead to include the removed tracking parameters.
+
+To remove every query parameter and the fragment:
+
+```sh
+linkary purge 'https://example.org/page?id=7&utm_source=newsletter#section' --link
+```
+
+This prints `https://example.org/page`.
 
 See the [CLI documentation](docs/CLI.md) for all commands and options.
 
@@ -39,14 +48,17 @@ See the [CLI documentation](docs/CLI.md) for all commands and options.
 Use Linkary in Node.js to inspect, clean and compare URLs in your own scripts and applications. It supports CommonJS and ESM imports, includes TypeScript declarations and has no runtime dependencies.
 
 ```js
-const { inspectUrl, cleanUrl, compareUrls } = require('linkary');
-// ESM: import { inspectUrl, cleanUrl, compareUrls } from 'linkary';
+const { inspectUrl, cleanUrl, purgeUrl, compareUrls } = require('linkary');
+// ESM: import { inspectUrl, cleanUrl, purgeUrl, compareUrls } from 'linkary';
 
 const inspection = inspectUrl('https://youtu.be/abc123?utm_source=newsletter');
 console.log(inspection.platform); // 'youtube'
 
 const cleaned = cleanUrl('https://example.org/?id=7&utm_source=newsletter');
 console.log(cleaned.cleanUrl); // 'https://example.org/?id=7'
+
+const purged = purgeUrl('https://example.org/page?id=7#section');
+console.log(purged.cleanUrl); // 'https://example.org/page'
 
 const comparison = compareUrls('https://youtu.be/abc123', 'https://youtube.com/watch?v=abc123');
 console.log(comparison.sameResource); // true
@@ -60,9 +72,22 @@ See the [Library API documentation](docs/LIBRARY.md) for all functions, return v
 
 Remove common tracking parameters such as `utm_*`, `fbclid` and `gclid` without visiting the destination. Choose additional parameters to remove or explicitly preserve values you need; changing signed links can invalidate them.
 
+Use `purge` to remove all query parameters and the fragment, including functional
+values such as resource IDs and navigation anchors.
+
 ## Recognize and compare resources
 
-Identify supported links from YouTube, TikTok, Instagram, Facebook, X/Twitter, Threads, Reddit, LinkedIn, Twitch, GitHub, Vimeo and Bluesky. Compare recognized resource identities across URL variants; unsupported patterns remain unknown, and recognition does not confirm that a resource exists or is accessible.
+Identify supported links from YouTube, TikTok, Instagram, Facebook, X/Twitter,
+Threads, Reddit, LinkedIn, Twitch, GitHub, Vimeo and Bluesky, plus:
+
+- Social networks: Snapchat, Truth Social, Pinterest, Tumblr, Mastodon, VK, Weibo and Odnoklassniki.
+- Communities and messaging: 4chan, Discord, Telegram, WhatsApp, Signal, Lemmy, Steam and Hacker News.
+- Publishing and media: Medium, Substack, Spotify, SoundCloud, Dailymotion, Rumble, Kick, Flickr, GitLab and Bilibili.
+
+Compare recognized resource identities across supported URL variants. Recognition
+does not confirm that a resource exists or is accessible. Opaque share links need
+explicit redirect resolution, and federated services support the documented hosts
+and identity limits. See the [platform URL patterns](docs/PLATFORMS.md).
 
 ## Follow redirects when needed
 

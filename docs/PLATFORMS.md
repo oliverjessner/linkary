@@ -1,8 +1,8 @@
 # Supported platform URL patterns
 
-These are offline parsing rules implemented in `src/platforms/`. They are tested with deterministic URL fixtures, not live platform requests. Recognition establishes a supported URL shape, not resource existence, accessibility, canonical ownership or current platform behavior. Unknown paths on a recognized host return that platform with `resourceType: 'unknown'` and null identifiers. Unrecognized hosts and nondefault ports return `platform: null`.
+These are offline parsing rules implemented in `src/platforms/`. The test suite uses deterministic URL fixtures rather than live platform requests. Recognition establishes a supported URL shape, not resource existence, accessibility, canonical ownership or current platform behavior. Unknown paths on a recognized host return that platform with `resourceType: 'unknown'` and null identifiers. Unrecognized hosts and nondefault ports return `platform: null`.
 
-Hosts match exactly after native URL normalization; arbitrary subdomains and lookalike suffixes do not match. Paths are case sensitive. A trailing slash is allowed for the path patterns below except the specific query endpoints `/watch` and `/playlist` on YouTube, and `.php` endpoints on Facebook. Default ports are removed before recognition. Fragments do not change the parent platform resource identity. Extra query keys are ignored for identification; duplicate required ID query keys are considered ambiguous and rejected. Handles/IDs are extracted from supported patterns, never inferred from a query that merely mentions another platform.
+Hosts match exactly after native URL normalization, with explicit single-label publication/blog subdomain rules for Tumblr, Medium and Substack. Arbitrary subdomains elsewhere and lookalike suffixes do not match. Paths are case sensitive unless a platform's documented rule says otherwise. Trailing slash support is specified by each adapter; the original patterns below allow it except the specific query endpoints `/watch` and `/playlist` on YouTube, and `.php` endpoints on Facebook. Default ports are removed before recognition. Fragments normally do not change the parent resource identity; Signal's fragment-based links and 4chan's explicit post anchors are documented exceptions. Extra query keys are ignored unless they select a different target, as described in the adapter documentation; duplicate required ID query keys are considered ambiguous and rejected. Handles/IDs are extracted from supported patterns, never inferred from a query that merely mentions another platform.
 
 Notation: `:id` is an explicit path/query identifier, `:handle` a supported account slug, `:n` digits. Examples use illustrative IDs.
 
@@ -170,6 +170,72 @@ Hosts: `bsky.app`, `www.bsky.app`.
 
 Handle syntax is ASCII dot-separated labels of letters/digits/`-`. Supported PLC suffixes are exactly 24 lowercase base32 characters (`a–z`, `2–7`); record keys are alphanumeric. Handle URLs expose `profileHandle`; DID URLs do not invent a handle. Example: `/profile/alice.bsky.social/post/3abc` returns `resourceId: '3abc'`, `profileHandle: 'alice.bsky.social'`, `identityKey: null`. The record key alone is not globally unique. `did:web`, handle-to-DID resolution, custom app hosts and feed/list identities are unsupported.
 
+## Additional social networks
+
+[Social platform patterns and primary sources](platforms/social.md) cover:
+
+| Service | Platform value |
+| --- | --- |
+| Snapchat | `snapchat` |
+| Truth Social | `truthsocial` |
+| Pinterest | `pinterest` |
+| Tumblr | `tumblr` |
+| Mastodon | `mastodon` |
+| VK | `vk` |
+| Weibo | `weibo` |
+| Odnoklassniki | `ok` |
+
+Tumblr blog subdomains follow an explicit host rule. Mastodon recognition is
+limited to the listed instances; it does not infer server software from an
+arbitrary domain or map locally assigned IDs across servers.
+
+## Communities and messaging
+
+[Community platform patterns and primary sources](platforms/community.md) cover:
+
+| Service | Platform value |
+| --- | --- |
+| 4chan | `4chan` |
+| Discord | `discord` |
+| Telegram | `telegram` |
+| WhatsApp | `whatsapp` |
+| Signal | `signal` |
+| Lemmy | `lemmy` |
+| Steam | `steam` |
+| Hacker News | `hackernews` |
+
+Invitation codes identify the addressed invitation, rather than an inferred
+server or group ID. Telegram public handles do not establish whether the target
+is a user, bot, group or channel. Lemmy's local IDs are scoped by instance.
+
+## Publishing, media and development
+
+[Content platform patterns and primary sources](platforms/content.md) cover:
+
+| Service | Platform value |
+| --- | --- |
+| Medium | `medium` |
+| Substack | `substack` |
+| Spotify | `spotify` |
+| SoundCloud | `soundcloud` |
+| Dailymotion | `dailymotion` |
+| Rumble | `rumble` |
+| Kick | `kick` |
+| Flickr | `flickr` |
+| GitLab | `gitlab` |
+| Bilibili | `bilibili` |
+
+Medium and Substack publication subdomains follow explicit host rules. Mutable
+permalink slugs and opaque share tokens do not imply immutable numeric IDs or
+equivalence to another URL format. GitLab paths that could name either a project
+or a subgroup remain unknown without an explicit project route.
+
 ## Identity limits
 
 Tokens and composites above are returned from URL syntax only. Handle-based keys represent the addressed handle namespace; handles may change or be reassigned, and keys do not establish permanent ownership. Different handles on different platforms never imply one person. Unknown routes never receive a synthesized resource ID. To analyze a shortlink's destination, explicitly call `resolveUrl()` and then `identifyUrl(result.finalUrl)`.
+
+Federated instance IDs and legacy ID systems use separate comparison namespaces
+where offline equivalence cannot be established. A `null` identity key means
+resource equivalence remains unknown even when a platform and resource type are
+recognized. Removing identity-bearing queries or fragments with `purge` changes
+the URL being inspected.

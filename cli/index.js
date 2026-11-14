@@ -13,6 +13,7 @@ Usage: linkary <command> [arguments] [options]
   inspect <url>           Inspect offline
   normalize <url>         Normalize conservatively
   clean <url>             Remove known tracking parameters
+  purge <url>             Remove all query parameters and the fragment
   resolve <url>           Resolve redirects (network)
   identify <url>          Identify supported platform resources
   compare <urlA> <urlB>   Compare URL identity offline
@@ -28,6 +29,7 @@ Global options:
   --version, -v          Show version
 
 Operation options:
+  --link                 Print only the cleaned URL (clean/purge)
   --remove-param <name>  Additional parameter to remove (repeatable)
   --preserve-param <name> Preserve parameter (repeatable; overrides removal)
   --resolve              Enable network resolution for batch
@@ -37,7 +39,8 @@ Operation options:
   --unsafe-allow-private Allow private/local network destinations explicitly
 
 Examples:
-  linkary clean 'https://example.org/?id=7&utm_source=mail' --json
+  linkary clean 'https://example.org/?id=7&utm_source=mail' --link
+  linkary purge 'https://example.org/page?id=7#section' --link
   linkary compare 'https://youtu.be/abc123' 'https://youtube.com/watch?v=abc123'
   cat urls.txt | linkary batch --stdin --jsonl
 
@@ -77,6 +80,7 @@ async function main(argv) {
   try {
     parsed = parseArgs({ args: argv, allowPositionals: true, options: {
       json: { type: 'boolean' }, jsonl: { type: 'boolean' }, quiet: { type: 'boolean' },
+      link: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }, version: { type: 'boolean', short: 'v' },
       timeout: { type: 'string' }, 'max-redirects': { type: 'string' },
       'remove-param': { type: 'string', multiple: true }, 'preserve-param': { type: 'string', multiple: true },
@@ -88,10 +92,12 @@ async function main(argv) {
   if (values.help || !argv.length) { await write(HELP); return; }
   if (values.version) { await write(`${version}\n`); return; }
   if (values.json && values.jsonl) usage('Choose either --json or --jsonl.');
+  if (values.link && (values.json || values.jsonl)) usage('Choose either --link, --json or --jsonl.');
   const [command, ...args] = positionals;
-  const functions = { inspect: linkary.inspectUrl, normalize: linkary.normalizeUrl, clean: linkary.cleanUrl,
+  const functions = { inspect: linkary.inspectUrl, normalize: linkary.normalizeUrl, clean: linkary.cleanUrl, purge: linkary.purgeUrl,
     resolve: linkary.resolveUrl, identify: linkary.identifyUrl, compare: linkary.compareUrls, batch: linkary.inspectMany };
   if (!Object.hasOwn(functions, command)) usage(`Unknown command: ${command || '(missing)'}. Use --help.`);
+  if (values.link && !['clean', 'purge'].includes(command)) usage('--link is only supported by clean and purge.');
   for (const flag of ['resolve', 'concurrency', 'deduplicate', 'stdin']) {
     if (values[flag] !== undefined && command !== 'batch') usage(`--${flag} is only supported by batch.`);
   }
@@ -131,7 +137,9 @@ async function main(argv) {
       if (args.length !== count) usage(`${command} requires ${count} URL argument${count > 1 ? 's' : ''}.`);
       result = await functions[command](...args, options);
     }
-    if (values.jsonl && Array.isArray(result)) {
+    if (values.link) {
+      await write(`${result.cleanUrl}\n`);
+    } else if (values.jsonl && Array.isArray(result)) {
       for (const item of result) await write(`${JSON.stringify(item)}\n`);
     } else if (values.json || values.jsonl || typeof result !== 'string') {
       await write(`${JSON.stringify(result, null, values.json || values.jsonl ? undefined : 2)}\n`);

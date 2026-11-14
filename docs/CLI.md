@@ -9,6 +9,7 @@ Requires Node.js >=26. Run `node cli/index.js` from a checkout, or `linkary` aft
 | `inspect <url>` | Flat inspection object | No |
 | `normalize <url>` | Normalized URL string | No |
 | `clean <url>` | Clean URL plus removal report | No |
+| `purge <url>` | URL without any query parameters or fragment, plus removal report | No |
 | `identify <url>` | Platform identity object | No |
 | `compare <urlA> <urlB>` | Equality levels and resource comparison | No |
 | `resolve <url>` | Destination, redirect hops and final status | Yes |
@@ -19,6 +20,8 @@ Requires Node.js >=26. Run `node cli/index.js` from a checkout, or `linkary` aft
 linkary inspect 'https://youtu.be/abc123?utm_source=mail' --json
 linkary clean 'https://example.org/?id=7&campaign_id=9&utm_source=mail' \
   --remove-param campaign_id --preserve-param id --json
+linkary clean 'https://example.org/?id=7&utm_source=mail' --link
+linkary purge 'https://example.org/page?id=7&utm_source=mail#section' --link
 linkary identify 'https://github.com/oliverjessner/linkary'
 linkary compare 'https://twitter.com/alice/status/123' 'https://x.com/alice/status/123'
 linkary resolve 'https://example.org/' --timeout 5000 --max-redirects 3 --json
@@ -34,6 +37,7 @@ The example IDs illustrate parsing, not resource existence.
 | --- | --- |
 | `--json` | Compact JSON; batches are one JSON array |
 | `--jsonl` | One compact JSON value per line; batches emit one per item |
+| `--link` | Print only the cleaned URL with a trailing newline; clean/purge only |
 | `--timeout <ms>` | Total network deadline per URL, integer 1–2147483647; default 10000 |
 | `--max-redirects <n>` | Redirect limit, integer 0–100; default 5 |
 | `--quiet` | Suppress human-readable stderr errors; retain results and exit status |
@@ -47,9 +51,21 @@ The example IDs illustrate parsing, not resource existence.
 | `--stdin` | Batch reads stdin; cannot also provide a file |
 | `--unsafe-allow-private` | Explicitly permit private/local network destinations |
 
-`--json` and `--jsonl` are mutually exclusive. Numeric network options are effective only for network operations. Key matching is case insensitive. There is no CLI option to supply request headers or a fetch implementation. Cache TTL and custom shortlink domains are library options.
+`--link`, `--json` and `--jsonl` are mutually exclusive. Numeric network options are effective only for network operations. Key matching is case insensitive. There is no CLI option to supply request headers or a fetch implementation. Cache TTL and custom shortlink domains are library options.
 
 Default structured output is pretty JSON. `normalize` prints a plain URL by default, and a JSON string with `--json`/`--jsonl`. All results go to stdout; human-readable diagnostics go to stderr. A single-operation failure with a machine format emits `{"error":{"code":"ERR_INVALID_URL","message":"..."}}` on stdout. Batch URL failures remain inside the corresponding item; no progress output or summary is mixed into machine output.
+
+`clean --link` and `purge --link` print the cleaned URL without JSON quotes or
+the removal report. On failure they leave stdout empty, report the error on
+stderr (unless `--quiet`) and exit nonzero. `clean` also supports
+`--remove-param` and `--preserve-param`.
+
+`purge` removes the entire query string and fragment, including empty `?` and
+`#` delimiters. It removes every parameter, including IDs and other functional
+values. The scheme, host, port and path follow the same URL normalization as
+`clean`. Without `--link`, the report contains `originalUrl`, `cleanUrl`,
+`removedParameters` and `removedFragment`. `--remove-param` and `--preserve-param`
+are not supported by `purge`.
 
 ## Batch input and output
 

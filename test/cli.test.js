@@ -59,7 +59,7 @@ test('CLI reads files and stdin, emits JSON arrays/JSONL and reports partial err
 
 test('CLI help, version, usage errors, quiet errors and URL failures have predictable exits', () => {
   assert.match(run(['--help']).stdout, /Understand every link/);
-  assert.equal(run(['--version']).stdout, '0.1.0\n');
+  assert.equal(run(['--version']).stdout, `${require('../package.json').version}\n`);
   assert.equal(run([]).status, 0);
   for (const args of [['wat'], ['inspect'], ['compare', 'https://a.test'], ['batch'], ['batch', 'file', '--stdin'],
     ['inspect', 'https://a.test', '--wat'], ['inspect', 'https://a.test', '--json', '--jsonl'],
