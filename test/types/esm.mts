@@ -1,6 +1,6 @@
-import linkary, { inspectUrl, inspectMany, purgeUrl, type UrlPurgeResult, type BatchInspectionOptions, type RedirectHop } from 'linkary';
-const options: BatchInspectionOptions = { resolve: Math.random() > 0.5 };
-const results = await inspectMany(['https://example.org'], options);
+import linkary, { inspectUrl, resolveUrl, purgeUrl, type UrlPurgeResult, type UrlResolutionOptions, type UrlResolutionResult, type RedirectHop } from 'linkary';
+const options: UrlResolutionOptions = { timeoutMs: 5000, maxRedirects: 3 };
+const resolution: Promise<UrlResolutionResult> = resolveUrl('https://example.org', options);
 const hostname: string = inspectUrl('https://example.org').hostname;
 const normalized: string = linkary.normalizeUrl('https://example.org');
 const purged: UrlPurgeResult = purgeUrl('https://example.org/?id=7#section');

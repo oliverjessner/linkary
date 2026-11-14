@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { identifyUrl, compareUrls } = require('..');
+const { identifyUrl } = require('..');
 
 const additionalPlatforms = [
   require('./platform-fixtures-community.js'),
@@ -113,10 +113,4 @@ test('platform detection uses exact hosts and conservative path patterns', () =>
     assert.equal(identity.identityKey, null, url);
   }
   assert.equal(identifyUrl('https://tiktok.com/@Alice/video/123').profileHandle, 'Alice');
-});
-
-test('additional platform identities keep verified aliases together and ambiguous namespaces apart', () => {
-  for (const [first, second, sameResource] of additionalPlatforms.flatMap(group => group.comparisons || [])) {
-    assert.equal(compareUrls(first, second).sameResource, sameResource, `${first} / ${second}`);
-  }
 });

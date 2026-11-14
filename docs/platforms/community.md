@@ -52,7 +52,7 @@ Hosts: `t.me`, `telegram.me`, `telegram.dog`.
 
 - `/<username>` identifies a generic `profile` handle. The URL alone does not
   distinguish a user, bot, group or channel. Supported ASCII handles start with
-  a letter and have 4–32 characters; handle keys compare case-insensitively.
+  a letter and have 4–32 characters; handle keys use lowercase names.
 - `/<username>/<message>` and `/s/<username>/<message>` identify a `message`
   with its visible handle, but no stable key: mapping a username to a numeric
   chat ID requires Telegram resolution.
@@ -115,8 +115,7 @@ guessing identifies arbitrary websites as Lemmy.
 
 - `/post/<number>` identifies a `post`. Its numeric ID is local to the viewed
   instance; the key is `lemmy:post@<host>:<number>`. Hostnames are part of the
-  comparison namespace, so two different instances do not prove a match or
-  mismatch between their local numbers.
+  identity namespace. Local numbers are not promoted into global federated IDs.
 - `/u/<name>` and `/c/<name>` recognize `profile` and `channel` handles, including
   ASCII `name@remote.example` forms. IDs and keys remain null until an actor URI
   is available. Federation, mirrored posts and aliases are not resolved offline.

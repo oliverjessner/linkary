@@ -1,10 +1,10 @@
 # Linkary 🔗
 
-Linkary is a command-line tool for inspecting, cleaning and comparing web links.
-It helps you remove tracking parameters and recognize different links to the same resource.
+Linkary is a command-line tool for inspecting, cleaning and resolving web links.
+It helps you remove tracking parameters and identify the platform and resource addressed by a link.
 Most operations work offline, so you can analyze links without contacting websites.
 
-Inspect a link to see its hostname, query parameters and recognized platform information, then clean it before sharing or saving it. Compare two links to check whether they point to the same supported resource. For larger collections, process a text file and export the results as JSON or JSONL.
+Inspect a link to see its hostname, query parameters and recognized platform information, then clean it before sharing or saving it. Resolve a shortlink when you need to see its destination.
 
 ## What it does
 
@@ -13,9 +13,7 @@ Inspect a link to see its hostname, query parameters and recognized platform inf
 - Purge all query parameters and URL fragments.
 - Normalize URL formatting while preserving meaningful path and query differences.
 - Recognize supported social, messaging, media, forum and repository links across 38 platforms.
-- Compare original links, normalized forms, cleaned forms and supported resource identities.
 - Follow redirects to find a link's destination and report the redirect chain.
-- Process URL lists from a file or standard input, with optional duplicate removal.
 
 See the [supported platform URL patterns](docs/PLATFORMS.md) for recognized links and limitations.
 
@@ -25,7 +23,7 @@ Linkary requires Node.js 26 or newer. There is currently no published npm packag
 
 ## CLI
 
-Inspect, clean, compare and resolve links, or process a whole URL list from the command line.
+Inspect, clean, purge and resolve a link from the command line.
 
 ```sh
 linkary clean 'https://example.org/?id=7&utm_source=newsletter' --link
@@ -45,11 +43,11 @@ See the [CLI documentation](docs/CLI.md) for all commands and options.
 
 ## Library
 
-Use Linkary in Node.js to inspect, clean and compare URLs in your own scripts and applications. It supports CommonJS and ESM imports, includes TypeScript declarations and has no runtime dependencies.
+Use Linkary in Node.js to inspect, clean, purge and identify a URL in your own scripts and applications. It supports CommonJS and ESM imports, includes TypeScript declarations and has no runtime dependencies.
 
 ```js
-const { inspectUrl, cleanUrl, purgeUrl, compareUrls } = require('linkary');
-// ESM: import { inspectUrl, cleanUrl, purgeUrl, compareUrls } from 'linkary';
+const { inspectUrl, cleanUrl, purgeUrl, identifyUrl } = require('linkary');
+// ESM: import { inspectUrl, cleanUrl, purgeUrl, identifyUrl } from 'linkary';
 
 const inspection = inspectUrl('https://youtu.be/abc123?utm_source=newsletter');
 console.log(inspection.platform); // 'youtube'
@@ -60,11 +58,11 @@ console.log(cleaned.cleanUrl); // 'https://example.org/?id=7'
 const purged = purgeUrl('https://example.org/page?id=7#section');
 console.log(purged.cleanUrl); // 'https://example.org/page'
 
-const comparison = compareUrls('https://youtu.be/abc123', 'https://youtube.com/watch?v=abc123');
-console.log(comparison.sameResource); // true
+const identity = identifyUrl('https://youtu.be/abc123');
+console.log(identity.identityKey); // 'youtube:video:abc123'
 ```
 
-These operations run synchronously and offline. Use `resolveUrl()` or `inspectMany(urls, { resolve: true })` for asynchronous redirect resolution.
+These operations run synchronously and offline. Use `resolveUrl()` for asynchronous redirect resolution.
 
 See the [Library API documentation](docs/LIBRARY.md) for all functions, return values and options.
 
@@ -75,7 +73,7 @@ Remove common tracking parameters such as `utm_*`, `fbclid` and `gclid` without 
 Use `purge` to remove all query parameters and the fragment, including functional
 values such as resource IDs and navigation anchors.
 
-## Recognize and compare resources
+## Recognize resources
 
 Identify supported links from YouTube, TikTok, Instagram, Facebook, X/Twitter,
 Threads, Reddit, LinkedIn, Twitch, GitHub, Vimeo and Bluesky, plus:
@@ -84,8 +82,8 @@ Threads, Reddit, LinkedIn, Twitch, GitHub, Vimeo and Bluesky, plus:
 - Communities and messaging: 4chan, Discord, Telegram, WhatsApp, Signal, Lemmy, Steam and Hacker News.
 - Publishing and media: Medium, Substack, Spotify, SoundCloud, Dailymotion, Rumble, Kick, Flickr, GitLab and Bilibili.
 
-Compare recognized resource identities across supported URL variants. Recognition
-does not confirm that a resource exists or is accessible. Opaque share links need
+Read platform identifiers from supported URL formats. Recognition does not
+confirm that a resource exists or is accessible. Opaque share links need
 explicit redirect resolution, and federated services support the documented hosts
 and identity limits. See the [platform URL patterns](docs/PLATFORMS.md).
 
@@ -95,15 +93,11 @@ Resolve a shortlink or redirecting URL to see its destination and each redirect 
 
 See the [network security policy](docs/SECURITY.md) for details and limits.
 
-## Process link collections
-
-Read one URL per line from a text file or standard input and export ordered results as JSON or JSONL. Optionally remove exact duplicate inputs or enable redirect resolution, with failures reported for each affected link.
-
 ## Who it is for
 
 - Researchers and journalists reviewing source links and redirect chains.
 - Content editors cleaning links before sharing or publishing them.
-- Analysts checking collected URL lists for tracking parameters and matching resources.
+- Analysts inspecting links for tracking parameters and platform identifiers.
 
 ## Changelog
 

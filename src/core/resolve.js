@@ -19,7 +19,7 @@ function resolutionOptions(options = {}) {
   };
 }
 
-async function performResolution(input, options, hostLimiter) {
+async function performResolution(input, options) {
   let current = parseUrl(input);
   const controller = new AbortController();
   const abort = () => controller.abort(new LinkaryError('ERR_ABORTED', 'Operation aborted.', { cause: options.signal.reason }));
@@ -34,14 +34,10 @@ async function performResolution(input, options, hostLimiter) {
       requestUrl.hash = '';
       if (visited.has(requestUrl.href)) throw new LinkaryError('ERR_REDIRECT_LOOP', 'Redirect loop detected.');
       visited.add(requestUrl.href);
-      const requestHop = async () => {
-        let response = await requestHeaders(current, 'HEAD', options, controller.signal);
-        if (response.status === 405 || response.status === 501) {
-          response = await requestHeaders(current, 'GET', options, controller.signal);
-        }
-        return response;
-      };
-      const response = hostLimiter ? await hostLimiter(current.hostname, controller.signal, requestHop) : await requestHop();
+      let response = await requestHeaders(current, 'HEAD', options, controller.signal);
+      if (response.status === 405 || response.status === 501) {
+        response = await requestHeaders(current, 'GET', options, controller.signal);
+      }
       if (!REDIRECTS.has(response.status)) {
         if (response.status < 200 || response.status >= 300) {
           throw new LinkaryError('ERR_HTTP_STATUS', `Resolution returned HTTP ${response.status}.`);
@@ -65,15 +61,11 @@ async function performResolution(input, options, hostLimiter) {
 }
 
 async function resolveUrl(input, options = {}) {
-  return resolveWithLimiter(input, options);
-}
-
-async function resolveWithLimiter(input, options = {}, hostLimiter) {
   const settings = resolutionOptions(options);
   const url = parseUrl(input);
   throwIfAborted(settings.signal);
   const key = JSON.stringify([url.href, settings.timeoutMs, settings.maxRedirects, settings.unsafeAllowPrivate, settings.cacheTtlMs]);
-  if (!settings.cacheTtlMs || key.length > 16384) return performResolution(input, settings, hostLimiter);
+  if (!settings.cacheTtlMs || key.length > 16384) return performResolution(input, settings);
   const now = performance.now();
   for (const [cachedKey, entry] of cache) if (entry.expires <= now) cache.delete(cachedKey);
   const cached = cache.get(key);
@@ -82,11 +74,10 @@ async function resolveWithLimiter(input, options = {}, hostLimiter) {
     cache.set(key, cached);
     return { ...structuredClone(cached.result), originalUrl: input };
   }
-  // Abortable operations have independent lifetimes. Batch requests retain
-  // their own per-hop scheduling. Neither joins a different caller's request.
-  const dedupe = !settings.signal && !hostLimiter;
+  // Abortable operations have independent lifetimes and do not share requests.
+  const dedupe = !settings.signal;
   if (dedupe && inFlight.has(key)) return { ...structuredClone(await inFlight.get(key)), originalUrl: input };
-  const pending = performResolution(input, settings, hostLimiter);
+  const pending = performResolution(input, settings);
   const track = dedupe && inFlight.size < MAX_IN_FLIGHT_ENTRIES;
   if (track) inFlight.set(key, pending);
   try {
@@ -102,4 +93,4 @@ async function resolveWithLimiter(input, options = {}, hostLimiter) {
   }
 }
 
-module.exports = { resolveUrl, resolveWithLimiter, resolutionOptions };
+module.exports = { resolveUrl };

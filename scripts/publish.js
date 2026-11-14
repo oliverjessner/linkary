@@ -126,7 +126,7 @@ function renderFormula(version, sha256) {
     throw new Error('A stable version and SHA-256 are required for the Homebrew formula.');
   }
   return `class Linkary < Formula
-  desc "Inspect, clean and compare web links"
+  desc "Inspect, clean, purge and resolve web links"
   homepage "https://github.com/oliverjessner/linkary"
   url "https://registry.npmjs.org/linkary/-/linkary-${version}.tgz"
   sha256 "${sha256}"

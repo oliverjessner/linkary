@@ -234,8 +234,7 @@ or a subgroup remain unknown without an explicit project route.
 
 Tokens and composites above are returned from URL syntax only. Handle-based keys represent the addressed handle namespace; handles may change or be reassigned, and keys do not establish permanent ownership. Different handles on different platforms never imply one person. Unknown routes never receive a synthesized resource ID. To analyze a shortlink's destination, explicitly call `resolveUrl()` and then `identifyUrl(result.finalUrl)`.
 
-Federated instance IDs and legacy ID systems use separate comparison namespaces
-where offline equivalence cannot be established. A `null` identity key means
-resource equivalence remains unknown even when a platform and resource type are
-recognized. Removing identity-bearing queries or fragments with `purge` changes
-the URL being inspected.
+Federated instance IDs and legacy ID systems use separate identity namespaces.
+A `null` identity key means no stable identity can be established from that URL
+even when a platform and resource type are recognized. Removing identity-bearing
+queries or fragments with `purge` changes the URL being inspected.

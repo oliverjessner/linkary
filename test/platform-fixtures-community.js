@@ -146,26 +146,4 @@ const unrecognized = [
   'https://ycombinator.com/item?id=123',
 ];
 
-const comparisons = [
-  ['https://boards.4chan.org/g/thread/123', 'https://boards.4channel.org/g/thread/123/topic', true],
-  ['https://boards.4chan.org/g/thread/123', 'https://boards.4chan.org/v/thread/123', false],
-  ['https://boards.4chan.org/g/thread/123#p456', 'https://boards.4chan.org/g/thread/123#p789', false],
-  ['https://boards.4chan.org/g/thread/123', 'https://boards.4chan.org/g/thread/123#p456', null],
-  ['https://discord.gg/AbC-123', 'https://discord.com/invite/AbC-123', true],
-  ['https://t.me/Alice', 'https://telegram.me/alice', true],
-  ['https://t.me/Alice/123', 'https://t.me/Bobby/123', null],
-  ['https://t.me/Alice/123', 'https://t.me/c/123456789/123', null],
-  ['https://t.me/joinchat/AbCd_ef-Gh', 'https://t.me/+AbCd_ef-Gh', true],
-  ['https://wa.me/15551234567', 'https://api.whatsapp.com/send?phone=15551234567', true],
-  ['https://signal.me/#p/+15551234567', 'https://signal.me/#p/+15557654321', false],
-  ['https://signal.me/#eu/AbCd', 'https://signal.me/#eu/EfGh', null],
-  ['https://signal.group/#AbCd', 'https://signal.group/#EfGh', false],
-  ['https://lemmy.ml/post/123', 'https://lemmy.world/post/123', null],
-  ['https://lemmy.ml/post/123', 'https://lemmy.ml/post/456', false],
-  ['https://lemmy.ml/u/Alice', 'https://lemmy.world/u/Alice@lemmy.ml', null],
-  ['https://steamcommunity.com/id/ChetFaliszek', 'https://steamcommunity.com/profiles/76561197968575517', null],
-  ['https://news.ycombinator.com/item?id=123', 'https://news.ycombinator.com/item?id=456', false],
-  ['https://news.ycombinator.com/user?id=Alice', 'https://news.ycombinator.com/user?id=alice', false],
-];
-
-module.exports = { fixtures, unknown, unrecognized, comparisons };
+module.exports = { fixtures, unknown, unrecognized };

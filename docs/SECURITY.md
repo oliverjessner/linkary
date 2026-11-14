@@ -1,6 +1,6 @@
 # Network security policy
 
-Offline functions never perform network requests. The policy below applies to `resolveUrl` and explicitly network-enabled batches. Linkary follows redirects only; it does not fetch page content, scrape engagement, bypass authentication/CAPTCHAs or rotate proxies.
+Offline functions never perform network requests. The policy below applies to `resolveUrl`. Linkary follows redirects only; it does not fetch page content, scrape engagement, bypass authentication/CAPTCHAs or rotate proxies.
 
 ## Default destination policy
 
@@ -20,7 +20,7 @@ This policy uses selected ranges from the [IANA IPv4](https://www.iana.org/assig
 
 After validation, one returned address is pinned into the actual HTTP(S) socket's `lookup` callback. Connection-time DNS cannot select a later unvalidated/private address. IP-literal URLs are checked directly. A fresh nonshared agent (`agent: false`) and disabled address-family auto-selection prevent reuse of a different destination. The native connection retains the URL hostname for Host, TLS server name and certificate verification. No caller-supplied agents, fetch implementations or proxy settings are accepted; global HTTP agents and their environment-proxy configuration are not used.
 
-Every request hop and the HEAD-to-GET fallback receives a new check. If the first validated address fails, the operation fails instead of silently retrying another address. Native DNS lookup itself may finish after cancellation; the raced operation has already rejected and will not create a connection from that late answer. An explicit AbortSignal and the total deadline cover DNS, requests, redirects, fallback and batch host waits.
+Every request hop and the HEAD-to-GET fallback receives a new check. If the first validated address fails, the operation fails instead of silently retrying another address. Native DNS lookup itself may finish after cancellation; the raced operation has already rejected and will not create a connection from that late answer. An explicit AbortSignal and the total deadline cover DNS, requests, redirects and fallback.
 
 Only headers are needed. HEAD is the default; HTTP 405 or 501 permits a GET with `Range: bytes=0-0` and `Accept-Encoding: identity`. Linkary closes the response and request at headers even when the server ignores Range or never ends its body. It buffers no response body and limits response headers to 16 KiB; bytes already received in a socket buffer cannot be prevented. Header-only checking cannot discover JavaScript, HTML meta-refresh or body-dependent redirects. Other HTTP errors, missing locations, unsupported redirects and protocol upgrades are explicit failures.
 
@@ -41,11 +41,11 @@ linkary resolve 'http://127.0.0.1:8080/' --unsafe-allow-private
 
 This is an explicit opt-in that allows internal, metadata and private addresses as well as local fixtures. Keep the default for untrusted inputs. Scheme/credential restrictions, redirect limits, TLS verification, deadlines and connection pinning still apply.
 
-## Cache and concurrency
+## Cache and shared requests
 
 The process-local cache retains only successful compatible resolutions. Unsafe results cannot satisfy safe calls; timeout, maximum redirects and TTL are also part of the key. No failed, invalid or aborted request is cached. A cache hit reports the previously validated successful result without making a connection; it is not a current availability check. Set `cacheTtlMs: 0` to require fresh resolution and DNS checks.
 
-The cache holds at most 256 results, each capped at 65536 serialized characters, and at most 128 tracked in-flight entries with bounded key size. It uses lazy expiry, cloned results and no maintenance timers or persistent files. Signals have independent request lifetimes; aborting one caller cannot cancel an unrelated shared request. A batch bounds complete network resolutions and serializes hops to each target hostname. Separate calls/batches have independent concurrency limits; applications remain responsible for global admission control/rate limiting.
+The cache holds at most 256 results, each capped at 65536 serialized characters, and at most 128 tracked in-flight entries with bounded key size. It uses lazy expiry, cloned results and no maintenance timers or persistent files. Compatible simultaneous calls without signals share in-flight work. Signals have independent request lifetimes; aborting one caller cannot cancel an unrelated shared request. Applications remain responsible for global admission control and rate limiting.
 
 ## Deployment limits
 

@@ -16,16 +16,13 @@ const { inspectUrl, cleanUrl, identifyUrl, resolveUrl } = require('linkary');
 | `cleanUrl(url, options?)` | `UrlCleanResult` | `stripFragment`, `removeParams`, `preserveParams` |
 | `purgeUrl(url)` | `UrlPurgeResult` | None; always removes the entire query and fragment |
 | `identifyUrl(url, options?)` | `UrlIdentity` | Empty reserved options object |
-| `compareUrls(a, b, options?)` | `UrlComparisonResult` | Cleaning and normalization |
 | `resolveUrl(url, options?)` | `Promise<UrlResolutionResult>` | Network options below |
-| `inspectMany(urls, options?)` | `BatchInspectionResult[]` | Offline by default |
-| `inspectMany(urls, { resolve: true, ... })` | `Promise<BatchInspectionResult[]>` | Network and batch options |
 | `isValidUrl(value)` | `boolean` | None; never throws for invalid input |
 | `isShortUrl(url, options?)` | `boolean` | `shortlinkDomains: string[]` |
 | `extractHostname(url)` | `string` | None |
 | `extractQueryParams(url)` | `[string, string][]` | None |
 
-Only network operations return promises. `await inspectMany(urls)` also works for an offline array, but is unnecessary. Options must be objects when supplied. Shared option fields are validated; unknown option names are ignored and confer no functionality.
+`resolveUrl` returns a promise; the other operations run synchronously. Options must be objects when supplied. Shared option fields are validated; unknown option names are ignored and confer no functionality.
 
 `stripFragment` defaults to false for normalization, cleaning and inspection. Explicitly setting it to true can change application routing/identity. `removeParams` and `preserveParams` are arrays of nonempty exact key names matched case insensitively. Preserve rules win over custom/default removal. `shortlinkDomains` adds exact hostnames without schemes, ports or paths, including internationalized names converted by URL parsing. The built-in shortlink registry is in `src/utils/shortlinks.js`.
 
@@ -91,7 +88,7 @@ parameters. Scheme, host, port and path use the same WHATWG normalization as
 `removedFragment` is the encoded fragment without `#`, or `null` when absent or
 empty. The function has no removal or preservation options.
 
-## Identification and comparison
+## Identification
 
 ```js
 identifyUrl('https://youtube.com/shorts/abc123');
@@ -101,16 +98,7 @@ identifyUrl('https://youtube.com/shorts/abc123');
 
 `profileHandle` omits `@` and is `null` when unavailable; a subreddit uses its name. `resourceId` is the identifier literally available from a supported URL structure, or a documented composite. It is not an invented numeric ID for a handle. `identityKey` is deterministic within a supported namespace and can be `null` even when a local resource ID is present, such as a Bluesky post addressed through a handle. See [platform patterns](PLATFORMS.md).
 
-```js
-compareUrls('https://youtu.be/abc123', 'https://youtube.com/watch?v=abc123');
-// { exactMatch: false, normalizedMatch: false, cleanMatch: false,
-//   sameResource: true, identityKeyA: 'youtube:video:abc123',
-//   identityKeyB: 'youtube:video:abc123', reason: 'platform-identity' }
-```
-
-All three equality flags are computed independently. `exactMatch` uses strict input-string equality. `reason` selects the first established level: `exact`, `normalized`, `clean`, `platform-identity`, `different-platform-resources`, or `unknown`.
-
-Identical exact/normalized/cleaned URLs imply `sameResource: true` under the caller's chosen cleaning rules. Matching known identity keys also imply true. Different known keys in the same comparable namespace, or on different platforms, imply false. Different namespaces on one platform can be aliases and produce `null` (for example, a YouTube handle and channel ID). Unidentified different URLs also produce `null`. Host similarity, matching handles on different platforms, and matching Bluesky record keys across actors never establish one shared resource or person. Platform identity comparisons concern the identified parent resource; fragment navigation does not introduce a separate platform ID.
+Identity namespaces describe the identifier's scope. A handle does not supply a numeric account ID, and a local federated identifier does not supply a global actor ID. Host similarity and identical handle spelling do not establish ownership across platforms. Fragment-sensitive identities follow the documented platform rules.
 
 ## Resolution
 
@@ -130,35 +118,19 @@ This result is illustrative; no live request is implied. Each hop is `{ from, to
 
 | Option | Default | Contract |
 | --- | --- | --- |
-| `timeoutMs` | 10000 | Total deadline across DNS, hops, fallback and batch host waits; integer 1–2147483647 |
+| `timeoutMs` | 10000 | Total deadline across DNS, hops and fallback; integer 1–2147483647 |
 | `maxRedirects` | 5 | Integer 0–100; zero allows a direct success but no redirect |
 | `signal` | None | AbortSignal; aborted calls reject |
 | `unsafeAllowPrivate` | false | Explicitly allow private/local targets; all other validation remains |
-| `cacheTtlMs` | 45000 | Integer 0–2147483647; zero disables cache and in-flight deduplication |
+| `cacheTtlMs` | 45000 | Integer 0–2147483647; zero disables cache and in-flight request sharing |
 
 There are no custom request headers, authentication, cookies, proxies, custom fetch implementations or retry options. TLS certificate/hostname checks remain enabled. See [security](SECURITY.md).
 
-Successful results are cached for the TTL from completion. Keys include normalized input, fragment, timeout, redirect limit, network policy and TTL. Results are cloned, so mutation cannot poison subsequent calls. At most 256 results of at most 65536 JSON characters each and 128 in-flight entries are retained; keys above 16384 characters bypass caching. Expiry is lazy using a monotonic clock. Errors are never cached. Compatible concurrent calls without signals share in-flight work. Calls with a signal and batch calls use independent lifetimes/scheduling, while still allowing successful-result cache hits. A cache hit performs no network or DNS request. No persistent storage or cache-maintenance timers are used.
-
-## Batch
-
-```js
-const results = inspectMany(['https://example.org/', 'invalid'], { deduplicate: true });
-// [{ index: 0, input: 'https://example.org/', ok: true,
-//    inspection: { ... }, resolution: null, error: null },
-//  { index: 1, input: 'invalid', ok: false, inspection: null,
-//    resolution: null, error: { name: 'LinkaryError', code: 'ERR_INVALID_URL', message: '...' } }]
-
-const resolved = await inspectMany(['https://example.org/'], {
-  resolve: true, concurrency: 5, signal: new AbortController().signal,
-});
-```
-
-Input must be a dense array of strings. Invalid URL strings produce individual errors; invalid shared options or nonstring input throw before execution, including on a network-enabled batch. Deduplication is exact string equality and retains first input indices. `concurrency` is 1–100, defaults to 5, and bounds complete resolutions. Each batch additionally serializes individual request hops per hostname, including redirect targets. This is an in-call bound, not a global rate limiter across separate batches/callers. Pending work reports `ERR_ABORTED` after cancellation. Each failed item has `inspection: null` and `resolution: null`, including a URL whose inspection succeeded but resolution failed. Output order is independent of completion order. No network call occurs without `resolve: true`.
+Successful results are cached for the TTL from completion. Keys include normalized input, fragment, timeout, redirect limit, network policy and TTL. Results are cloned, so mutation cannot poison subsequent calls. At most 256 results of at most 65536 JSON characters each and 128 in-flight entries are retained; keys above 16384 characters bypass caching. Expiry is lazy using a monotonic clock. Errors are never cached. Compatible simultaneous calls without signals share in-flight work. Calls with a signal keep independent lifetimes while still allowing successful-result cache hits. A cache hit performs no network or DNS request. No persistent storage or cache-maintenance timers are used.
 
 ## Errors and types
 
-Single-URL local functions throw `LinkaryError` synchronously; `resolveUrl` rejects with it. `isValidUrl` returns false instead. Each error has `name`, `code`, `message`, optional native `cause`, and `toJSON()` (which omits causes and URLs to avoid exposing credentials). Types are in `src/index.d.ts`, including discriminated batch results, nullable fields and offline/network overloads.
+Local functions throw `LinkaryError` synchronously; `resolveUrl` rejects with it. `isValidUrl` returns false instead. Each error has `name`, `code`, `message`, optional native `cause`, and `toJSON()` (which omits causes and URLs to avoid exposing credentials). Types are in `src/index.d.ts`, including result objects, nullable fields and resolver options.
 
 | Code | Meaning |
 | --- | --- |
@@ -166,7 +138,6 @@ Single-URL local functions throw `LinkaryError` synchronously; `resolveUrl` reje
 | `ERR_UNSUPPORTED_SCHEME` | Scheme outside HTTP(S) |
 | `ERR_CREDENTIALS` | Embedded username/password |
 | `ERR_INVALID_OPTIONS` | Invalid option type/range |
-| `ERR_INVALID_INPUT` | Batch input is not a dense string array |
 | `ERR_UNSAFE_ADDRESS` | Forbidden hostname/address, invalid or mixed DNS answers |
 | `ERR_DNS` | Hostname lookup failed |
 | `ERR_NETWORK` | Connection/TLS/header parsing failure |

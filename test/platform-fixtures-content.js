@@ -109,30 +109,4 @@ const unrecognized = [
   'https://gitlab.com.evil.test/team/project.git', 'https://evil-bilibili.com/video/BV1B7411m7LV',
 ];
 
-const comparisons = [
-  ['https://medium.com/p/9db0094a1e0f', 'https://policy.medium.com/medium-terms-of-service-9db0094a1e0f', true],
-  ['https://medium.com/@alice/story-9db0094a1e0f', 'https://medium.com/@bob/renamed-9db0094a1e0f', true],
-  ['https://dispatch.substack.com/p/hello-world', 'https://another.substack.com/p/hello-world', null],
-  ['https://dispatch.substack.com/p/old-title', 'https://dispatch.substack.com/p/new-title', null],
-  ['https://substack.com/@dispatch', 'https://dispatch.substack.com/', null],
-  ['https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6', 'https://open.spotify.com/embed/track/6rqhFgbbKwnb9MLmUQDhG6', true],
-  ['https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6', 'https://open.spotify.com/album/6rqhFgbbKwnb9MLmUQDhG6', null],
-  ['https://soundcloud.com/forss/flickermood', 'https://soundcloud.com/another/flickermood', null],
-  ['https://dailymotion.com/video/x12345', 'https://geo.dailymotion.com/player/xfh28.html?video=x12345', true],
-  ['https://dailymotion.com/video/x12345', 'https://dailymotion.com/video/k12345', null],
-  ['https://rumble.com/v5pv5f-example.html', 'https://rumble.com/embed/v5pv5f/', null],
-  ['https://rumble.com/c/RumbleEvents', 'https://rumble.com/user/RumbleEvents', null],
-  ['https://kick.com/Alice', 'https://www.kick.com/alice', true],
-  ['https://flickr.com/photos/alice/155761353', 'https://flickr.com/photos/bobby/155761353', true],
-  ['https://flickr.com/photos/alice/155761353', 'https://flickr.com/photo.gne?id=155761353', true],
-  ['https://flickr.com/people/vanity-name', 'https://flickr.com/people/12037949754@N01', null],
-  ['https://gitlab.com/team/subgroup/project.git', 'https://gitlab.com/team/subgroup/project/-/tree/main', true],
-  ['https://gitlab.com/team/project/-/issues/12', 'https://gitlab.com/team/another/-/issues/12', false],
-  ['https://gitlab.com/team/project/-/issues/12', 'https://gitlab.com/team/project/-/merge_requests/12', null],
-  ['https://bilibili.com/video/BV1B7411m7LV', 'https://player.bilibili.com/player.html?bvid=BV1B7411m7LV', true],
-  ['https://bilibili.com/video/av170001', 'https://player.bilibili.com/player.html?aid=170001', true],
-  ['https://bilibili.com/video/BV1B7411m7LV', 'https://bilibili.com/video/av170001', null],
-  ['https://space.bilibili.com/170001', 'https://bilibili.com/video/av170001', null],
-];
-
-module.exports = { fixtures, unknown, unrecognized, comparisons };
+module.exports = { fixtures, unknown, unrecognized };

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 const { parseArgs } = require('node:util');
-const { readFile } = require('node:fs/promises');
 const { once } = require('node:events');
 const linkary = require('../src/index.js');
 const { version } = require('../package.json');
@@ -16,11 +15,9 @@ Usage: linkary <command> [arguments] [options]
   purge <url>             Remove all query parameters and the fragment
   resolve <url>           Resolve redirects (network)
   identify <url>          Identify supported platform resources
-  compare <urlA> <urlB>   Compare URL identity offline
-  batch [file]           Inspect one URL per line
 
 Global options:
-  --json                 Compact JSON (a JSON array for batch)
+  --json                 Compact JSON
   --jsonl                One JSON value per line
   --timeout <ms>         Total resolution deadline (default: 10000)
   --max-redirects <n>    Maximum redirects (default: 5)
@@ -32,20 +29,14 @@ Operation options:
   --link                 Print only the cleaned URL (clean/purge)
   --remove-param <name>  Additional parameter to remove (repeatable)
   --preserve-param <name> Preserve parameter (repeatable; overrides removal)
-  --resolve              Enable network resolution for batch
-  --concurrency <n>      Batch network concurrency (default: 5; max: 100)
-  --deduplicate          Omit exact duplicate batch inputs
-  --stdin                Read batch URLs from stdin instead of a file
   --unsafe-allow-private Allow private/local network destinations explicitly
 
 Examples:
   linkary clean 'https://example.org/?id=7&utm_source=mail' --link
   linkary purge 'https://example.org/page?id=7#section' --link
-  linkary compare 'https://youtu.be/abc123' 'https://youtube.com/watch?v=abc123'
-  cat urls.txt | linkary batch --stdin --jsonl
 
-Exit codes: 0 success; 1 URL/network failure or failed batch items;
-            2 usage/input-file error; 130 interrupted.
+Exit codes: 0 success; 1 URL/network failure;
+            2 usage error; 130 interrupted.
 `;
 
 function usage(message) {
@@ -64,17 +55,6 @@ async function write(value) {
   if (!process.stdout.write(value)) await once(process.stdout, 'drain');
 }
 
-async function readStdin(signal) {
-  const abort = () => process.stdin.destroy(new linkary.LinkaryError('ERR_ABORTED', 'Operation aborted.'));
-  signal.addEventListener('abort', abort, { once: true });
-  try {
-    if (signal.aborted) abort();
-    const chunks = [];
-    for await (const chunk of process.stdin) chunks.push(chunk);
-    return Buffer.concat(chunks).toString('utf8');
-  } finally { signal.removeEventListener('abort', abort); }
-}
-
 async function main(argv) {
   let parsed;
   try {
@@ -84,8 +64,7 @@ async function main(argv) {
       help: { type: 'boolean', short: 'h' }, version: { type: 'boolean', short: 'v' },
       timeout: { type: 'string' }, 'max-redirects': { type: 'string' },
       'remove-param': { type: 'string', multiple: true }, 'preserve-param': { type: 'string', multiple: true },
-      resolve: { type: 'boolean' }, concurrency: { type: 'string' }, deduplicate: { type: 'boolean' },
-      stdin: { type: 'boolean' }, 'unsafe-allow-private': { type: 'boolean' },
+      'unsafe-allow-private': { type: 'boolean' },
     } });
   } catch (error) { usage(error.message); }
   const { values, positionals } = parsed;
@@ -95,14 +74,11 @@ async function main(argv) {
   if (values.link && (values.json || values.jsonl)) usage('Choose either --link, --json or --jsonl.');
   const [command, ...args] = positionals;
   const functions = { inspect: linkary.inspectUrl, normalize: linkary.normalizeUrl, clean: linkary.cleanUrl, purge: linkary.purgeUrl,
-    resolve: linkary.resolveUrl, identify: linkary.identifyUrl, compare: linkary.compareUrls, batch: linkary.inspectMany };
+    resolve: linkary.resolveUrl, identify: linkary.identifyUrl };
   if (!Object.hasOwn(functions, command)) usage(`Unknown command: ${command || '(missing)'}. Use --help.`);
   if (values.link && !['clean', 'purge'].includes(command)) usage('--link is only supported by clean and purge.');
-  for (const flag of ['resolve', 'concurrency', 'deduplicate', 'stdin']) {
-    if (values[flag] !== undefined && command !== 'batch') usage(`--${flag} is only supported by batch.`);
-  }
   for (const flag of ['remove-param', 'preserve-param']) {
-    if (values[flag] !== undefined && !['clean', 'inspect', 'compare', 'batch'].includes(command)) usage(`--${flag} is not supported by ${command}.`);
+    if (values[flag] !== undefined && !['clean', 'inspect'].includes(command)) usage(`--${flag} is not supported by ${command}.`);
   }
   const controller = new AbortController();
   const interrupt = () => { process.exitCode = 130; controller.abort(); };
@@ -111,36 +87,13 @@ async function main(argv) {
     timeoutMs: numberOption(values.timeout, '--timeout'),
     maxRedirects: numberOption(values['max-redirects'], '--max-redirects'),
     removeParams: values['remove-param'], preserveParams: values['preserve-param'],
-    unsafeAllowPrivate: values['unsafe-allow-private'], concurrency: numberOption(values.concurrency, '--concurrency'),
-    resolve: values.resolve, deduplicate: values.deduplicate, signal: controller.signal,
+    unsafeAllowPrivate: values['unsafe-allow-private'], signal: controller.signal,
   };
   try {
-    let result;
-    if (command === 'batch') {
-      if (values.stdin && args.length || !values.stdin && args.length !== 1) usage('Use batch <file> or batch --stdin.');
-      let content;
-      try { content = values.stdin ? await readStdin(controller.signal)
-        : await readFile(args[0], { encoding: 'utf8', signal: controller.signal }); }
-      catch (cause) {
-        if (controller.signal.aborted) throw new linkary.LinkaryError('ERR_ABORTED', 'Operation aborted.');
-        else {
-          const error = new linkary.LinkaryError('ERR_INPUT', 'Cannot read batch input.', { cause });
-          error.exitCode = 2;
-          throw error;
-        }
-      }
-      const urls = content.replace(/^\uFEFF/, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      result = await linkary.inspectMany(urls, options);
-      if (result.some(item => !item.ok) && process.exitCode !== 130) process.exitCode = 1;
-    } else {
-      const count = command === 'compare' ? 2 : 1;
-      if (args.length !== count) usage(`${command} requires ${count} URL argument${count > 1 ? 's' : ''}.`);
-      result = await functions[command](...args, options);
-    }
+    if (args.length !== 1) usage(`${command} requires one URL argument.`);
+    const result = await functions[command](args[0], options);
     if (values.link) {
       await write(`${result.cleanUrl}\n`);
-    } else if (values.jsonl && Array.isArray(result)) {
-      for (const item of result) await write(`${JSON.stringify(item)}\n`);
     } else if (values.json || values.jsonl || typeof result !== 'string') {
       await write(`${JSON.stringify(result, null, values.json || values.jsonl ? undefined : 2)}\n`);
     } else await write(`${result}\n`);

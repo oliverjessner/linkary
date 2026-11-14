@@ -80,19 +80,4 @@ const unrecognized = [
   'https://snapchat.com:8443/add/alice', 'https://mastodon.social:8443/@alice/123',
 ];
 
-const comparisons = [
-  ['https://www.pinterest.com/pin/1234567890/', 'https://at.pinterest.com/pin/1234567890/', true],
-  ['https://www.tumblr.com/staff/701641653313748992/example', 'https://staff.tumblr.com/post/701641653313748992', true],
-  ['https://tumblr.com/staff', 'https://staff.tumblr.com/', true],
-  ['https://staff.tumblr.com/post/123', 'https://changes.tumblr.com/post/123', null],
-  ['https://mastodon.social/@Gargron/103270115826048975', 'https://mastodon.social/users/Gargron/statuses/103270115826048975', true],
-  ['https://mastodon.social/@alice/123', 'https://mastodon.online/@alice/123', null],
-  ['https://mastodon.social/@alice/123', 'https://mastodon.online/@alice/456', null],
-  ['https://mastodon.social/@alice/123', 'https://mastodon.social/@alice/456', false],
-  ['https://mastodon.social/@alice', 'https://fosstodon.org/@alice', null],
-  ['https://weibo.com/2016713117/MBDTlsX5r', 'https://weibo.com/2/detail/5362603040705309', null],
-  ['https://vk.com/wall-123_456', 'https://vk.com/wall123_456', false],
-  ['https://vk.com/wall-123_456', 'https://vk.com/video-123_456', null],
-];
-
-module.exports = { fixtures, unknown, unrecognized, comparisons };
+module.exports = { fixtures, unknown, unrecognized };

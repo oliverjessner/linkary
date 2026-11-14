@@ -149,7 +149,7 @@ Hosts: `weibo.com`, `www.weibo.com`.
 | `/2/detail/:n` | post | Explicit numeric post ID; `weibo:post-id:<n>` |
 
 The desktop subset accepts a 5–20 digit owner and a case-sensitive 6–16 character
-ASCII alphanumeric token. Tokens are not decoded or equated to numeric post IDs.
+ASCII alphanumeric token. Tokens are not decoded into numeric post IDs.
 Vanity profiles, bare numeric root paths, mobile domains, video and shortlinks
 are outside this subset. Explicit numeric components reject leading zeros.
 

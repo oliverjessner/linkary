@@ -107,7 +107,7 @@ Main-host `/video/:id` and legacy `/embed/video/:id` identify videos. On `geo`,
 video ID; exactly one `video` value is required. The supported ID subset starts
 with `x` or `k` followed by 3–63 ASCII alphanumeric characters. Public `x` IDs use
 `dailymotion:video:<id>`; private `k` tokens use
-`dailymotion:private-video:<id>`. The two namespaces are not equated offline.
+`dailymotion:private-video:<id>`. No conversion between these ID forms is attempted.
 Player IDs do not replace video IDs. Channel paths and opaque `dai.ly` aliases
 remain unknown. Recognition of a legacy player URL does not assert that the
 legacy player still works.
@@ -218,7 +218,7 @@ the positive decimal number with `bilibili:av:<number>`. On the player host,
 `/player.html?bvid=:BV` or `/player.html?aid=:number` uses the corresponding
 namespace. Exactly one ID selector with one value is required; combinations,
 duplicates, and `episodeId`/`seasonId` selectors remain unknown. BV and av IDs
-are not converted or equated. Parts, time offsets and fragments do not change
+are not converted. Parts, time offsets and fragments do not change
 the identified video submission; individual segments are not identified.
 
 `space.bilibili.com/:number` identifies a profile in the separate
