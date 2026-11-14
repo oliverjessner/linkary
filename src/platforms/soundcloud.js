@@ -6,11 +6,11 @@ const tabs = new Set(['tracks', 'sets', 'albums', 'reposts', 'popular-tracks', '
 
 module.exports = function soundcloud(url) {
   if (!['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com'].includes(url.hostname)) return null;
-  const match = url.pathname.match(/^\/([a-z0-9_-]{3,25})(?:\/(?:sets\/)?([a-z0-9][a-z0-9_-]{0,199}))?\/?$/);
+  const match = url.pathname.match(/^\/([a-z0-9_-]{3,25})(?:\/(?:(sets)\/)?([a-z0-9][a-z0-9_-]{0,199}))?\/?$/);
   if (!match || routes.has(match[1])) return null;
-  if (!match[2]) return profile('soundcloud', match[1]);
-  const playlist = url.pathname.split('/')[2] === 'sets';
-  if (!playlist && tabs.has(match[2])) return null;
+  if (!match[3]) return profile('soundcloud', match[1]);
+  const playlist = match[2] === 'sets';
+  if (!playlist && tabs.has(match[3])) return null;
   // Track/playlist permalinks are mutable; they do not reveal numeric API IDs.
-  return identity('soundcloud', playlist ? 'playlist' : 'track', `${match[1]}/${match[2]}`, match[1], null);
+  return identity('soundcloud', playlist ? 'playlist' : 'track', `${match[1]}/${match[3]}`, match[1], null);
 };

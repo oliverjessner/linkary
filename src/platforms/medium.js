@@ -15,7 +15,8 @@ function medium(url) {
   const root = url.hostname === 'medium.com' || url.hostname === 'www.medium.com';
   if (!root && !owner) return null;
   const parts = url.pathname.replace(/\/$/, '').split('/').slice(1);
-  if (owner && parts.length === 1 && parts[0] === '') return profile('medium', owner);
+  // Subdomain homepages can belong to either profiles or publications.
+  if (owner && parts.length === 1 && parts[0] === '') return null;
   if (root && parts.length === 1 && parts[0].startsWith('@') && handle.test(parts[0].slice(1))) {
     return profile('medium', parts[0].slice(1));
   }

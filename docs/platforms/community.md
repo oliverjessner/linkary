@@ -101,7 +101,7 @@ Only the root path is supported, without query parameters. `signal.link`
 redirects remain unknown. These Signal fragments are explicit content-identity
 exceptions: changing a phone fragment or invitation token changes the target.
 No payload is decrypted and no cryptographic validity or account accessibility
-is asserted. The [Signal Android username-link implementation](https://github.com/signalapp/Signal-Android/blob/main/app/src/main/java/org/thoughtcrime/securesms/util/UsernameUtil.kt)
+is asserted. The [Signal Android username-link implementation](https://github.com/signalapp/Signal-Android/blob/v7.0.0/app/src/main/java/org/thoughtcrime/securesms/util/UsernameUtil.kt)
 defines `#eu/`; Signal's [username announcement](https://signal.org/blog/phone-number-privacy-usernames/)
 explains contact links and privacy; [Signal's own issue tracker](https://github.com/signalapp/Signal-iOS/issues/706)
 records the phone-link form and [group-link handling](https://github.com/signalapp/Signal-Android/issues/13949).
