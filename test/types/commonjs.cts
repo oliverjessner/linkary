@@ -4,7 +4,9 @@ const clean: linkary.UrlCleanResult = linkary.cleanUrl(inspection.originalUrl, {
 const purged: linkary.UrlPurgeResult = linkary.purgeUrl('https://example.org/?id=7#section');
 const purgedFragment: string | null = purged.removedFragment;
 const identity: linkary.UrlIdentity = linkary.identifyUrl(clean.cleanUrl);
-const resolution: Promise<linkary.UrlResolutionResult> = linkary.resolveUrl(clean.cleanUrl, { signal: new AbortController().signal });
+const resolution: Promise<linkary.UrlResolutionResult> = linkary.resolveUrl(clean.cleanUrl, {
+  signal: new AbortController().signal, userAgent: 'Linkary typed/1.0',
+});
 const normalized: string = linkary.normalizeUrl(clean.cleanUrl, { stripFragment: true });
 const valid: boolean = linkary.isValidUrl(null);
 const short: boolean = linkary.isShortUrl(normalized, { shortlinkDomains: ['go.example.org'] });
@@ -18,3 +20,5 @@ const wrongPromise: Promise<string> = linkary.normalizeUrl(normalized);
 const wrongClean: string = linkary.cleanUrl(normalized);
 // @ts-expect-error options use a boolean
 linkary.resolveUrl(normalized, { unsafeAllowPrivate: 'yes' });
+// @ts-expect-error a User-Agent override must be a string
+linkary.resolveUrl(normalized, { userAgent: 42 });

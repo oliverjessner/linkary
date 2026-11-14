@@ -2,6 +2,8 @@
 
 ## 0.2.0
 
+- Improve redirect resolution with bounded GET fallbacks for HTTP 403 and range
+  rejection, a configurable User-Agent and hostname/redirect diagnostics.
 - Remove multi-URL processing and URL comparison APIs and commands.
 - Expand offline platform recognition from 12 to 38 services, including 4chan,
   Snapchat, Truth Social, Pinterest, Discord, Tumblr and Telegram, with documented

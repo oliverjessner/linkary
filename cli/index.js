@@ -30,6 +30,7 @@ Operation options:
   --remove-param <name>  Additional parameter to remove (repeatable)
   --preserve-param <name> Preserve parameter (repeatable; overrides removal)
   --unsafe-allow-private Allow private/local network destinations explicitly
+  --user-agent <value>   HTTP User-Agent override (resolve only)
 
 Examples:
   linkary clean 'https://example.org/?id=7&utm_source=mail' --link
@@ -65,6 +66,7 @@ async function main(argv) {
       timeout: { type: 'string' }, 'max-redirects': { type: 'string' },
       'remove-param': { type: 'string', multiple: true }, 'preserve-param': { type: 'string', multiple: true },
       'unsafe-allow-private': { type: 'boolean' },
+      'user-agent': { type: 'string' },
     } });
   } catch (error) { usage(error.message); }
   const { values, positionals } = parsed;
@@ -77,6 +79,7 @@ async function main(argv) {
     resolve: linkary.resolveUrl, identify: linkary.identifyUrl };
   if (!Object.hasOwn(functions, command)) usage(`Unknown command: ${command || '(missing)'}. Use --help.`);
   if (values.link && !['clean', 'purge'].includes(command)) usage('--link is only supported by clean and purge.');
+  if (values['user-agent'] !== undefined && command !== 'resolve') usage('--user-agent is only supported by resolve.');
   for (const flag of ['remove-param', 'preserve-param']) {
     if (values[flag] !== undefined && !['clean', 'inspect'].includes(command)) usage(`--${flag} is not supported by ${command}.`);
   }
@@ -87,7 +90,7 @@ async function main(argv) {
     timeoutMs: numberOption(values.timeout, '--timeout'),
     maxRedirects: numberOption(values['max-redirects'], '--max-redirects'),
     removeParams: values['remove-param'], preserveParams: values['preserve-param'],
-    unsafeAllowPrivate: values['unsafe-allow-private'], signal: controller.signal,
+    unsafeAllowPrivate: values['unsafe-allow-private'], userAgent: values['user-agent'], signal: controller.signal,
   };
   try {
     if (args.length !== 1) usage(`${command} requires one URL argument.`);

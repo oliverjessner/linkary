@@ -114,7 +114,15 @@ const result = await resolveUrl('https://example.org/', {
 //   redirectCount: 0, redirects: [], status: 200 }
 ```
 
-This result is illustrative; no live request is implied. Each hop is `{ from, to, status }`. Only 301/302/303/307/308 are followed. Relative Location headers resolve against the current URL. A missing redirect fragment inherits the current fragment; an explicit fragment replaces it. Fragments are never sent over HTTP, and loop detection ignores them. HEAD is attempted per hop; 405/501 trigger a GET with `Range: bytes=0-0`, and the response is closed at headers even if the range is ignored. Other failure statuses, including 3xx codes outside the supported set, reject.
+This result is illustrative; no live request is implied. Each hop is `{ from, to, status }`. Only 301/302/303/307/308 are followed. Relative Location headers resolve against the current URL. A missing redirect fragment inherits the current fragment; an explicit fragment replaces it. Fragments are never sent over HTTP, and loop detection ignores them.
+
+Each hop starts with HEAD. HTTP 403, 405 or 501 triggers a GET with
+`Range: bytes=0-0`. If that ranged GET returns 403 or 416, a final GET is made
+without Range. These are at most three requests per hop and share the same total
+deadline across the redirect chain. Each attempt validates DNS and pins a fresh
+validated address. Every response is closed at its headers, including plain GET
+responses and servers that ignore Range; no response body is buffered. Other
+failure statuses, including unsupported 3xx codes and a final HTTP 403, reject.
 
 | Option | Default | Contract |
 | --- | --- | --- |
@@ -123,14 +131,31 @@ This result is illustrative; no live request is implied. Each hop is `{ from, to
 | `signal` | None | AbortSignal; aborted calls reject |
 | `unsafeAllowPrivate` | false | Explicitly allow private/local targets; all other validation remains |
 | `cacheTtlMs` | 45000 | Integer 0–2147483647; zero disables cache and in-flight request sharing |
+| `userAgent` | Versioned Linkary identifier | Nonblank string of printable ASCII characters, maximum 1024 characters |
 
-There are no custom request headers, authentication, cookies, proxies, custom fetch implementations or retry options. TLS certificate/hostname checks remain enabled. See [security](SECURITY.md).
+The default request headers are `User-Agent: Linkary/<version> (+https://github.com/oliverjessner/linkary)`,
+`Accept: */*` and `Accept-Encoding: identity`. Only User-Agent can be overridden:
 
-Successful results are cached for the TTL from completion. Keys include normalized input, fragment, timeout, redirect limit, network policy and TTL. Results are cloned, so mutation cannot poison subsequent calls. At most 256 results of at most 65536 JSON characters each and 128 in-flight entries are retained; keys above 16384 characters bypass caching. Expiry is lazy using a monotonic clock. Errors are never cached. Compatible simultaneous calls without signals share in-flight work. Calls with a signal keep independent lifetimes while still allowing successful-result cache hits. A cache hit performs no network or DNS request. No persistent storage or cache-maintenance timers are used.
+```js
+await resolveUrl('https://example.org/', { userAgent: 'MyLinkTool/1.0' });
+```
+
+The value is trimmed and must not be empty. Control characters, line breaks and
+non-ASCII characters are rejected with `ERR_INVALID_OPTIONS`. General header
+maps, authentication, cookies, proxies, custom fetch implementations and
+caller-defined retry options are unsupported. TLS certificate/hostname checks
+remain enabled. Resolution does not run a browser, execute JavaScript, follow
+HTML meta-refresh or solve access challenges. See [security](SECURITY.md).
+
+Successful results are cached for the TTL from completion. Keys include normalized input, fragment, timeout, redirect limit, network policy, effective User-Agent and TTL. Results are cloned, so mutation cannot poison subsequent calls. At most 256 results of at most 65536 JSON characters each and 128 in-flight entries are retained; keys above 16384 characters bypass caching. Expiry is lazy using a monotonic clock. Errors are never cached. Compatible simultaneous calls without signals share in-flight work. Calls with a signal keep independent lifetimes while still allowing successful-result cache hits. A cache hit performs no network or DNS request. No persistent storage or cache-maintenance timers are used.
 
 ## Errors and types
 
 Local functions throw `LinkaryError` synchronously; `resolveUrl` rejects with it. `isValidUrl` returns false instead. Each error has `name`, `code`, `message`, optional native `cause`, and `toJSON()` (which omits causes and URLs to avoid exposing credentials). Types are in `src/index.d.ts`, including result objects, nullable fields and resolver options.
+
+Terminal HTTP-status error messages include the failing hostname and completed
+redirect count, distinguishing an initial-host failure from a later hop. They
+omit the full URL, including its path, query and fragment.
 
 | Code | Meaning |
 | --- | --- |

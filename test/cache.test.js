@@ -35,10 +35,33 @@ test('cache does not mix security policies, limits or deadlines and never stores
   assert.equal(fixture.requests.length, 3);
   fail = true;
   for (let i = 0; i < 2; i++) await assert.rejects(resolveUrl(`${fixture.url}/failure`, options), { code: 'ERR_HTTP_STATUS' });
-  assert.equal(fixture.requests.length, 5);
+  assert.equal(fixture.requests.length, 9);
   fail = false;
   await resolveUrl(`${fixture.url}/failure`, options);
-  assert.equal(fixture.requests.length, 6);
+  assert.equal(fixture.requests.length, 10);
+});
+
+test('cache and in-flight requests separate User-Agent identities after outer-space normalization', async t => {
+  const fixture = await server(t, (_req, res) => res.writeHead(204).end());
+  const options = { unsafeAllowPrivate: true, cacheTtlMs: 1000 };
+  const input = `${fixture.url}/agents`;
+  const firstAgent = 'Linkary cache/one';
+  const secondAgent = 'Linkary cache/two';
+  await Promise.all([
+    resolveUrl(input, { ...options, userAgent: firstAgent }),
+    resolveUrl(input, { ...options, userAgent: `  ${firstAgent}  ` }),
+    resolveUrl(input, { ...options, userAgent: secondAgent }),
+  ]);
+  assert.equal(fixture.requests.length, 2);
+  assert.deepEqual(fixture.requests.map(request => request.headers['user-agent']).sort(), [firstAgent, secondAgent]);
+  await resolveUrl(input, { ...options, userAgent: firstAgent });
+  await resolveUrl(input, { ...options, userAgent: secondAgent });
+  assert.equal(fixture.requests.length, 2);
+  const defaultUserAgent = `Linkary/${require('../package.json').version} (+https://github.com/oliverjessner/linkary)`;
+  await resolveUrl(input, options);
+  await resolveUrl(input, { ...options, userAgent: defaultUserAgent });
+  assert.equal(fixture.requests.length, 3);
+  assert.equal(fixture.requests[2].headers['user-agent'], defaultUserAgent);
 });
 
 test('abort signals have independent request lifetimes and aborted calls cannot hit cache', async t => {

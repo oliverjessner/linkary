@@ -9,6 +9,7 @@ const { server } = require('./fixtures.js');
 const { resolveUrl } = require('..');
 const { isPublicAddress, validatedAddress } = require('../src/utils/network.js');
 const local = { unsafeAllowPrivate: true, cacheTtlMs: 0 };
+const defaultUserAgent = `Linkary/${require('../package.json').version} (+https://github.com/oliverjessner/linkary)`;
 
 test('redirect chains use every supported status, relative locations and inherited fragments', async t => {
   const statuses = [301, 302, 303, 307, 308];
@@ -30,16 +31,146 @@ test('redirect chains use every supported status, relative locations and inherit
 
 test('HEAD rejection falls back to GET with a byte range, closes at headers', async t => {
   const fixture = await server(t, (req, res) => {
-    if (req.method === 'HEAD') res.writeHead(req.url === '/501' ? 501 : 405).end();
+    if (req.method === 'HEAD') res.writeHead(Number(req.url.slice(1))).end();
     else { res.writeHead(200); res.flushHeaders(); /* Deliberately never end the body. */ }
   });
-  for (const path of ['/405', '/501']) {
+  for (const path of ['/403', '/405', '/501']) {
     const result = await resolveUrl(fixture.url + path, { ...local, timeoutMs: 1000 });
     assert.equal(result.status, 200);
   }
-  assert.deepEqual(fixture.requests.map(r => r.method), ['HEAD', 'GET', 'HEAD', 'GET']);
-  assert.equal(fixture.requests[1].headers.range, 'bytes=0-0');
-  assert.equal(fixture.requests[1].headers['accept-encoding'], 'identity');
+  assert.deepEqual(fixture.requests.map(r => r.method), ['HEAD', 'GET', 'HEAD', 'GET', 'HEAD', 'GET']);
+  for (const request of fixture.requests) {
+    assert.equal(request.headers.range, request.method === 'GET' ? 'bytes=0-0' : undefined);
+    assert.equal(request.headers['user-agent'], defaultUserAgent);
+    assert.equal(request.headers.accept, '*/*');
+    assert.equal(request.headers['accept-encoding'], 'identity');
+  }
+});
+
+test('rejected ranged GET falls back once to plain GET and closes at headers', async t => {
+  const fixture = await server(t, (req, res) => {
+    if (req.method === 'HEAD') res.writeHead(403).end();
+    else if (req.headers.range) res.writeHead(Number(req.url.slice(1))).end();
+    else { res.writeHead(200); res.flushHeaders(); /* A plain GET body must not be consumed either. */ }
+  });
+  for (const status of [403, 416]) {
+    const result = await resolveUrl(`${fixture.url}/${status}`, { ...local, timeoutMs: 1000, userAgent: '  Linkary fixture/plain  ' });
+    assert.equal(result.status, 200);
+    const requests = fixture.requests.filter(request => request.path === `/${status}`);
+    assert.deepEqual(requests.map(request => request.method), ['HEAD', 'GET', 'GET']);
+    assert.deepEqual(requests.map(request => request.headers.range), [undefined, 'bytes=0-0', undefined]);
+    for (const request of requests) {
+      assert.equal(request.headers['user-agent'], 'Linkary fixture/plain');
+      assert.equal(request.headers.accept, '*/*');
+      assert.equal(request.headers['accept-encoding'], 'identity');
+    }
+  }
+});
+
+test('persistent HTTP 403 stops after three attempts per hop and reports only safe location context', async t => {
+  const fixture = await server(t, (req, res) => {
+    if (req.url.startsWith('/sensitive-source')) res.writeHead(302, { Location: '/private-target?token=also-secret' }).end();
+    else res.writeHead(403).end();
+  });
+  await assert.rejects(resolveUrl(`${fixture.url}/denied?token=direct-secret`, local), { code: 'ERR_HTTP_STATUS' });
+  assert.deepEqual(fixture.requests.map(request => request.method), ['HEAD', 'GET', 'GET']);
+  await assert.rejects(resolveUrl(`${fixture.url}/sensitive-source?token=do-not-log`, local), error => {
+    assert.equal(error.code, 'ERR_HTTP_STATUS');
+    assert.match(error.message, /HTTP 403/);
+    assert.ok(error.message.includes(new URL(fixture.url).hostname));
+    assert.match(error.message, /(?:\b1\s+redirect|redirect(?:s| count)?[:= ]+\s*1\b)/i);
+    for (const sensitive of [fixture.url, 'sensitive-source', 'private-target', 'do-not-log', 'also-secret']) {
+      assert.equal(error.message.includes(sensitive), false, sensitive);
+    }
+    return true;
+  });
+  const targetRequests = fixture.requests.filter(request => request.path.startsWith('/private-target'));
+  assert.deepEqual(targetRequests.map(request => request.method), ['HEAD', 'GET', 'GET']);
+  assert.deepEqual(targetRequests.map(request => request.headers.range), [undefined, 'bytes=0-0', undefined]);
+  assert.equal(fixture.requests.length, 7);
+});
+
+test('each fallback revalidates DNS and pins its own checked address before connecting', async t => {
+  for (const forbiddenAttempt of [null, 1, 2]) {
+    await t.test(forbiddenAttempt === null ? 'all attempts stay public' : `rebinding before attempt ${forbiddenAttempt + 1}`, async t => {
+      const addresses = ['8.8.8.8', '1.1.1.1', '9.9.9.9'];
+      let validations = 0;
+      t.mock.method(dns, 'lookup', async () => {
+        const index = validations++;
+        return [{ address: index === forbiddenAttempt ? '127.0.0.1' : addresses[index], family: 4 }];
+      });
+      const requests = [];
+      let closedResponses = 0;
+      let closedRequests = 0;
+      t.mock.method(http, 'request', (url, options) => {
+        const index = requests.length;
+        assert.equal(url.hostname, 'fallback.example.org');
+        assert.equal(options.agent, false);
+        assert.equal(options.autoSelectFamily, false);
+        assert.equal(options.family, 4);
+        options.lookup(url.hostname, {}, (error, address, family) => {
+          assert.equal(error, null);
+          assert.equal(address, addresses[index]);
+          assert.equal(family, 4);
+        });
+        requests.push(options);
+        const request = new EventEmitter();
+        request.destroy = () => { closedRequests++; };
+        request.end = () => queueMicrotask(() => {
+          const response = new EventEmitter();
+          response.statusCode = [403, 416, 204][index];
+          response.headers = {};
+          response.destroy = () => { closedResponses++; };
+          request.emit('response', response);
+        });
+        return request;
+      });
+      const pending = resolveUrl('http://fallback.example.org/', { cacheTtlMs: 0 });
+      if (forbiddenAttempt === null) assert.equal((await pending).status, 204);
+      else await assert.rejects(pending, { code: 'ERR_UNSAFE_ADDRESS' });
+      const expectedRequests = forbiddenAttempt ?? 3;
+      assert.equal(requests.length, expectedRequests);
+      assert.equal(validations, forbiddenAttempt === null ? 3 : forbiddenAttempt + 1);
+      assert.deepEqual(requests.map(request => request.method), ['HEAD', 'GET', 'GET'].slice(0, expectedRequests));
+      assert.equal(new Set(requests.map(request => request.signal)).size, 1);
+      assert.equal(closedResponses, expectedRequests);
+      assert.equal(closedRequests, expectedRequests);
+    });
+  }
+});
+
+test('fallback attempts share the original total deadline instead of resetting it', { timeout: 2000 }, async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  t.mock.method(dns, 'lookup', async () => [{ address: '8.8.8.8', family: 4 }]);
+  const responses = [];
+  t.mock.method(http, 'request', (_url, options) => {
+    const request = new EventEmitter();
+    const abort = () => request.emit('error', new Error('aborted fixture request'));
+    options.signal.addEventListener('abort', abort, { once: true });
+    request.destroy = () => options.signal.removeEventListener('abort', abort);
+    request.end = () => responses.push(status => {
+      const response = new EventEmitter();
+      response.statusCode = status;
+      response.headers = {};
+      response.destroy = () => {};
+      request.emit('response', response);
+    });
+    return request;
+  });
+  const pending = assert.rejects(resolveUrl('http://deadline.example.org/', { cacheTtlMs: 0, timeoutMs: 1000 }), { code: 'ERR_TIMEOUT' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(responses.length, 1);
+  t.mock.timers.tick(400);
+  responses[0](403);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(responses.length, 2);
+  t.mock.timers.tick(400);
+  responses[1](403);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(responses.length, 3);
+  t.mock.timers.tick(201);
+  await pending;
+  assert.equal(responses.length, 3);
 });
 
 test('loops, excessive redirects and malformed or forbidden locations fail explicitly', async t => {
@@ -140,11 +271,24 @@ test('every redirect target receives a fresh network safety check', async t => {
   assert.equal(requests, 1);
 });
 
-test('network option validation rejects invalid values and credentials', async () => {
-  for (const options of [{ timeoutMs: 0 }, { maxRedirects: -1 }, { cacheTtlMs: -1 }, { unsafeAllowPrivate: 'yes' }, { signal: {} }]) {
+test('network option validation rejects invalid values and unsafe User-Agent headers before DNS', async t => {
+  const lookup = t.mock.method(dns, 'lookup', () => { throw new Error('invalid options must not reach DNS'); });
+  const invalidAgents = [null, 42, false, '', '   ', '\tLinkary', 'Linkary\t', 'Linkary\r\nX-Injected: yes',
+    'Linkary\n', 'Linkary\u0000', 'Linkary\u001f', 'Linkary\u007f', 'Linkary/é', 'a'.repeat(1025), ` ${'a'.repeat(1023)} `];
+  for (const options of [{ timeoutMs: 0 }, { maxRedirects: -1 }, { cacheTtlMs: -1 }, { unsafeAllowPrivate: 'yes' }, { signal: {} },
+    ...invalidAgents.map(userAgent => ({ userAgent }))]) {
     await assert.rejects(resolveUrl('https://example.org', options), { code: 'ERR_INVALID_OPTIONS' });
   }
   await assert.rejects(resolveUrl('https://user:secret@example.org'), { code: 'ERR_CREDENTIALS' });
+  assert.equal(lookup.mock.callCount(), 0);
+});
+
+test('visible ASCII User-Agent values accept the size boundary and trim only outer spaces', async t => {
+  const fixture = await server(t, (_req, res) => res.writeHead(204).end());
+  await resolveUrl(`${fixture.url}/limit`, { ...local, userAgent: 'a'.repeat(1024) });
+  await resolveUrl(`${fixture.url}/spaces`, { ...local, userAgent: '  Linkary fixture/1.0 !~  ' });
+  assert.equal(fixture.requests[0].headers['user-agent'], 'a'.repeat(1024));
+  assert.equal(fixture.requests[1].headers['user-agent'], 'Linkary fixture/1.0 !~');
 });
 
 test('HTTPS retains hostname and native TLS verification; protocol upgrades fail', async t => {
@@ -155,7 +299,9 @@ test('HTTPS retains hostname and native TLS verification; protocol upgrades fail
     assert.equal(options.servername, undefined); // derived natively from URL hostname
     assert.equal(options.family, 6);
     assert.equal(options.agent, false);
-    assert.deepEqual(options.headers, {});
+    assert.deepEqual(Object.fromEntries(Object.entries(options.headers).map(([name, value]) => [name.toLowerCase(), value])), {
+      'user-agent': defaultUserAgent, accept: '*/*', 'accept-encoding': 'identity',
+    });
     const request = new EventEmitter();
     request.end = () => queueMicrotask(() => request.emit('upgrade', {}, { destroy() {} }));
     return request;
@@ -167,9 +313,13 @@ test('HTTPS retains hostname and native TLS verification; protocol upgrades fail
 test('cross-origin redirects send no caller authorization/cookie headers', async t => {
   const destination = await server(t, (_req, res) => res.writeHead(204).end());
   const source = await server(t, (_req, res) => res.writeHead(302, { Location: destination.url }).end());
-  await resolveUrl(source.url, { ...local, headers: { Authorization: 'secret', Cookie: 'session=secret' } });
+  await resolveUrl(source.url, { ...local, userAgent: 'Linkary fixture/cross-origin',
+    headers: { Authorization: 'secret', Cookie: 'session=secret', 'User-Agent': 'untrusted override' } });
   for (const request of [...source.requests, ...destination.requests]) {
     assert.equal(request.headers.authorization, undefined);
     assert.equal(request.headers.cookie, undefined);
+    assert.equal(request.headers['user-agent'], 'Linkary fixture/cross-origin');
+    assert.equal(request.headers.accept, '*/*');
+    assert.equal(request.headers['accept-encoding'], 'identity');
   }
 });

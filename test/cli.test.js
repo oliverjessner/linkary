@@ -43,7 +43,9 @@ test('CLI help, version, usage errors, quiet errors and URL failures have predic
   assert.equal(run([]).status, 0);
   for (const args of [['wat'], ['inspect'], ['normalize', 'https://a.test', 'https://b.test'],
     ['inspect', 'https://a.test', '--wat'], ['inspect', 'https://a.test', '--json', '--jsonl'],
-    ['resolve', 'https://a.test', '--timeout', '-1'], ['purge', 'https://a.test', '--preserve-param', 'v']]) {
+    ['resolve', 'https://a.test', '--timeout', '-1'], ['purge', 'https://a.test', '--preserve-param', 'v'],
+    ['inspect', 'https://a.test', '--user-agent', 'Linkary fixture/cli'],
+    ['resolve', 'https://a.test', '--user-agent']]) {
     const result = run([...args, '--json']);
     assert.equal(result.status, 2, args.join(' '));
     assert.equal(JSON.parse(result.stdout).error.code, 'ERR_USAGE');
@@ -57,11 +59,21 @@ test('CLI help, version, usage errors, quiet errors and URL failures have predic
 });
 
 test('CLI resolve calls the public resolver with explicit network policy', async t => {
-  const fixture = await server(t, (_req, res) => res.writeHead(204).end());
+  const fixture = await server(t, (req, res) => {
+    res.writeHead(req.method === 'HEAD' ? 403 : req.headers.range ? 416 : 204).end();
+  });
   const denied = await runAsync(['resolve', fixture.url, '--json']);
   assert.equal(denied.status, 1);
   assert.equal(JSON.parse(denied.stdout).error.code, 'ERR_UNSAFE_ADDRESS');
-  const allowed = await runAsync(['resolve', fixture.url, '--unsafe-allow-private', '--timeout', '1000', '--max-redirects', '0', '--json']);
+  const allowed = await runAsync(['resolve', fixture.url, '--unsafe-allow-private', '--timeout', '1000', '--max-redirects', '0',
+    '--user-agent', 'Linkary fixture/cli', '--json']);
   assert.equal(allowed.status, 0, allowed.stderr);
   assert.equal(JSON.parse(allowed.stdout).status, 204);
+  assert.deepEqual(fixture.requests.map(request => request.method), ['HEAD', 'GET', 'GET']);
+  assert.deepEqual(fixture.requests.map(request => request.headers.range), [undefined, 'bytes=0-0', undefined]);
+  for (const request of fixture.requests) assert.equal(request.headers['user-agent'], 'Linkary fixture/cli');
+  const invalid = await runAsync(['resolve', fixture.url, '--unsafe-allow-private', '--user-agent', 'Bad\nAgent', '--json']);
+  assert.equal(invalid.status, 2);
+  assert.equal(JSON.parse(invalid.stdout).error.code, 'ERR_INVALID_OPTIONS');
+  assert.equal(fixture.requests.length, 3);
 });

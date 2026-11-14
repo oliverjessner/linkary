@@ -1,5 +1,6 @@
 import linkary, { inspectUrl, resolveUrl, purgeUrl, type UrlPurgeResult, type UrlResolutionOptions, type UrlResolutionResult, type RedirectHop } from 'linkary';
-const options: UrlResolutionOptions = { timeoutMs: 5000, maxRedirects: 3 };
+const options: UrlResolutionOptions = { timeoutMs: 5000, maxRedirects: 3, userAgent: 'Linkary esm/1.0' };
+const userAgent: string | undefined = options.userAgent;
 const resolution: Promise<UrlResolutionResult> = resolveUrl('https://example.org', options);
 const hostname: string = inspectUrl('https://example.org').hostname;
 const normalized: string = linkary.normalizeUrl('https://example.org');

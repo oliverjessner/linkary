@@ -84,6 +84,8 @@ export interface UrlResolutionOptions {
   signal?: AbortSignal;
   /** Explicitly allow local/private IP addresses. Default: false. Credentials remain blocked. */
   unsafeAllowPrivate?: boolean;
+  /** HTTP User-Agent; printable ASCII, 1–1024 characters, trimmed. Default: Linkary/version. */
+  userAgent?: string;
   /** Process-local successful-result TTL. Default: 45000. Zero disables caching and deduplication. */
   cacheTtlMs?: number;
 }

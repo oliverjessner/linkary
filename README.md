@@ -91,6 +91,11 @@ and identity limits. See the [platform URL patterns](docs/PLATFORMS.md).
 
 Resolve a shortlink or redirecting URL to see its destination and each redirect along the way. Resolution contacts websites and reports inaccessible destinations or redirect loops; private and local network destinations are blocked by default.
 
+HEAD and GET fallbacks support servers that reject particular request methods or
+byte ranges. Use `resolve --user-agent 'MyLinkTool/1.0'` to set the client
+identifier. Resolution uses HTTP requests without a browser; JavaScript redirects,
+login pages and access challenges can still prevent it from finding a destination.
+
 See the [network security policy](docs/SECURITY.md) for details and limits.
 
 ## Who it is for

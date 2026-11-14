@@ -65,7 +65,7 @@ async function validatedAddress(url, unsafeAllowPrivate, signal) {
   return addresses[0];
 }
 
-async function requestHeaders(url, method, options, signal) {
+async function requestHeaders(url, method, options, signal, useRange = true) {
   const pinned = await validatedAddress(url, options.unsafeAllowPrivate, signal);
   throwIfAborted(signal);
   return new Promise((resolve, reject) => {
@@ -80,8 +80,13 @@ async function requestHeaders(url, method, options, signal) {
         if (lookupOptions.all) callback(null, [pinned]);
         else callback(null, pinned.address, pinned.family);
       },
-      // No caller-supplied headers: credentials/cookies cannot cross origins.
-      headers: method === 'GET' ? { Range: 'bytes=0-0', 'Accept-Encoding': 'identity' } : {},
+      // Only the validated User-Agent is configurable; no credentials or cookies.
+      headers: {
+        'User-Agent': options.userAgent,
+        Accept: '*/*',
+        'Accept-Encoding': 'identity',
+        ...(method === 'GET' && useRange ? { Range: 'bytes=0-0' } : {}),
+      },
       maxHeaderSize: 16384,
     });
     request.once('error', cause => {
