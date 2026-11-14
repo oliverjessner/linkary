@@ -5,6 +5,7 @@ const SHORTLINK_HOSTS = new Set([
   'bit.ly', 't.co', 'tinyurl.com', 'ow.ly', 'buff.ly', 'is.gd', 'cutt.ly',
   'youtu.be', 'vm.tiktok.com', 'vt.tiktok.com', 'redd.it', 'trib.al',
   'rb.gy', 'rebrand.ly', 'shorturl.at', 'lnkd.in', 'amzn.to', 'goo.gl',
+  'pin.it', 'spotify.link', 'on.soundcloud.com', 'dai.ly', 'flic.kr', 'b23.tv',
 ]);
 
 function isShortUrl(input, options = {}) {

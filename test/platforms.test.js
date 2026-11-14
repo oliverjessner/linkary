@@ -1,7 +1,13 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { identifyUrl } = require('..');
+const { identifyUrl, compareUrls } = require('..');
+
+const additionalPlatforms = [
+  require('./platform-fixtures-community.js'),
+  require('./platform-fixtures-social.js'),
+  require('./platform-fixtures-content.js'),
+];
 
 const fixtures = [
   ['https://youtu.be/abc123', 'youtube', 'video', 'abc123', 'youtube:video:abc123'],
@@ -62,17 +68,29 @@ const fixtures = [
   ['https://bsky.app/profile/alice.bsky.social/post/3abc', 'bluesky', 'post', '3abc', null],
   ['https://bsky.app/profile/did:plc:abcdefghijklmnopqrstuvwx/post/3abc', 'bluesky', 'post', '3abc', 'bluesky:post:did:plc:abcdefghijklmnopqrstuvwx/3abc'],
   ['https://bsky.app/profile/did:plc:abcdefghijklmnopqrstuvwx', 'bluesky', 'profile', 'did:plc:abcdefghijklmnopqrstuvwx', 'bluesky:did:did:plc:abcdefghijklmnopqrstuvwx'],
+  ...additionalPlatforms.flatMap(group => group.fixtures),
 ];
 
-for (const [url, platform, resourceType, resourceId, identityKey] of fixtures) {
+for (const [url, platform, resourceType, resourceId, identityKey, profileHandle] of fixtures) {
   test(`identify ${url}`, () => {
     const result = identifyUrl(url);
     assert.deepEqual({ ...result, profileHandle: undefined }, { platform, resourceType, resourceId, identityKey, profileHandle: undefined });
+    if (profileHandle !== undefined) assert.equal(result.profileHandle, profileHandle);
   });
 }
 
 test('platform detection uses exact hosts and conservative path patterns', () => {
-  for (const url of ['https://example.org/?url=youtube.com', 'https://youtube.com.evil.test/watch?v=x', 'https://evil-youtube.com/watch?v=x', 'https://youtube.com:8443/watch?v=x']) {
+  for (const [input] of fixtures) {
+    const spoofed = new URL(input);
+    spoofed.hostname += '.evil.test';
+    const nondefaultPort = new URL(input);
+    nondefaultPort.port = '8443';
+    for (const url of [spoofed.href, nondefaultPort.href]) {
+      assert.deepEqual(identifyUrl(url), { platform: null, resourceType: 'unknown', resourceId: null, profileHandle: null, identityKey: null }, url);
+    }
+  }
+  for (const url of ['https://example.org/?url=youtube.com', 'https://youtube.com.evil.test/watch?v=x', 'https://evil-youtube.com/watch?v=x', 'https://youtube.com:8443/watch?v=x',
+    ...additionalPlatforms.flatMap(group => group.unrecognized)]) {
     assert.deepEqual(identifyUrl(url), { platform: null, resourceType: 'unknown', resourceId: null, profileHandle: null, identityKey: null });
   }
   for (const url of [
@@ -87,6 +105,7 @@ test('platform detection uses exact hosts and conservative path patterns', () =>
     'https://github.com/settings', 'https://github.com/owner/repo/tree/main', 'https://github.com/owner/repo.git', 'https://vimeo.com/manage/videos/123',
     'https://bsky.app/profile/did:web:example.org', 'https://bsky.app/profile/did:plc:tooshort',
     'https://facebook.com/watch?v=bad', 'https://facebook.com/robots.txt', 'https://instagram.com/robots.txt',
+    ...additionalPlatforms.flatMap(group => group.unknown),
   ]) {
     const identity = identifyUrl(url);
     assert.equal(identity.resourceType, 'unknown', url);
@@ -94,4 +113,10 @@ test('platform detection uses exact hosts and conservative path patterns', () =>
     assert.equal(identity.identityKey, null, url);
   }
   assert.equal(identifyUrl('https://tiktok.com/@Alice/video/123').profileHandle, 'Alice');
+});
+
+test('additional platform identities keep verified aliases together and ambiguous namespaces apart', () => {
+  for (const [first, second, sameResource] of additionalPlatforms.flatMap(group => group.comparisons || [])) {
+    assert.equal(compareUrls(first, second).sameResource, sameResource, `${first} / ${second}`);
+  }
 });

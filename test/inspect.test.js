@@ -20,7 +20,8 @@ test('flat offline inspection reports URL parts without inventing domains or IDs
 });
 
 test('shortlink registry and custom rules use exact hostnames', () => {
-  for (const host of ['bit.ly', 't.co', 'tinyurl.com', 'ow.ly', 'buff.ly', 'is.gd', 'cutt.ly', 'youtu.be', 'vm.tiktok.com', 'vt.tiktok.com']) {
+  for (const host of ['bit.ly', 't.co', 'tinyurl.com', 'ow.ly', 'buff.ly', 'is.gd', 'cutt.ly', 'youtu.be', 'vm.tiktok.com', 'vt.tiktok.com',
+    'pin.it', 'spotify.link', 'on.soundcloud.com', 'dai.ly', 'flic.kr', 'b23.tv']) {
     assert.equal(isShortUrl(`https://${host}/test`), true);
   }
   for (const url of ['https://example.org/a', 'https://bit.ly.evil.test/a', 'https://not-bit.ly/a', 'https://www.bit.ly/a']) assert.equal(isShortUrl(url), false);
