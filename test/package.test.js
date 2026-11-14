@@ -16,7 +16,12 @@ test('packed package installs offline with no runtime dependencies and exposes l
   assert.equal(packed.status, 0, packed.stderr);
   const [manifest] = JSON.parse(packed.stdout);
   const files = manifest.files.map(item => item.path);
-  for (const file of ['src/index.js', 'src/index.d.ts', 'cli/index.js', 'README.md', 'LICENSE', 'docs/SECURITY.md', 'docs/PLATFORMS.md']) assert(files.includes(file), file);
+  const requiredFiles = [
+    'src/index.js', 'src/index.d.ts', 'cli/index.js', 'README.md', 'LICENSE',
+    'docs/CLI.md', 'docs/LIBRARY.md', 'docs/PLATFORMS.md', 'docs/CHANGELOG.md',
+    'docs/platforms/community.md', 'docs/platforms/social.md', 'docs/platforms/content.md',
+  ];
+  for (const file of requiredFiles) assert(files.includes(file), file);
   assert(files.every(file => !file.startsWith('test/') && !file.startsWith('node_modules/')));
   const installed = spawnSync(npm, ['install', '--prefix', directory, '--omit=dev', '--ignore-scripts', '--offline', '--no-audit', '--no-fund', join(directory, manifest.filename)], {
     encoding: 'utf8', cwd: directory,

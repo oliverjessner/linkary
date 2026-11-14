@@ -163,7 +163,8 @@ test('complete dry runs validate and preview without contacting Git or publishin
 }, async t => {
   for (const useNpmConfig of [false, true]) {
     await t.test(useNpmConfig ? 'inherited npm dry-run config' : 'explicit dry-run flag', t => {
-      const directory = fs.mkdtempSync(join(tmpdir(), 'linkary-release-test-'));
+      // Match Node's canonical __dirname when macOS tmpdir() traverses /var.
+      const directory = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'linkary-release-test-')));
       t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
       const source = join(directory, 'source checkout');
       const bin = join(directory, 'bin');

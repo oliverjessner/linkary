@@ -13,7 +13,7 @@
 - Add `clean --link` to print only the cleaned URL without JSON or a removal report.
 - Add a shared `npm run publish` workflow for npm and the neighboring Homebrew tap,
   with release checks, a dry run, archive checksum verification and scoped formula
-  commits and pushes. See [Publishing Linkary](PUBLISH.md).
+  commits and pushes.
 
 ## 0.1.0
 

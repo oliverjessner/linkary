@@ -96,7 +96,7 @@ byte ranges. Use `resolve --user-agent 'MyLinkTool/1.0'` to set the client
 identifier. Resolution uses HTTP requests without a browser; JavaScript redirects,
 login pages and access challenges can still prevent it from finding a destination.
 
-See the [network security policy](docs/SECURITY.md) for details and limits.
+See the [resolution reference](docs/LIBRARY.md#resolution) for details and limits.
 
 ## Who it is for
 

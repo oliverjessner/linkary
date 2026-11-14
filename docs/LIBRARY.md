@@ -145,7 +145,7 @@ non-ASCII characters are rejected with `ERR_INVALID_OPTIONS`. General header
 maps, authentication, cookies, proxies, custom fetch implementations and
 caller-defined retry options are unsupported. TLS certificate/hostname checks
 remain enabled. Resolution does not run a browser, execute JavaScript, follow
-HTML meta-refresh or solve access challenges. See [security](SECURITY.md).
+HTML meta-refresh or solve access challenges.
 
 Successful results are cached for the TTL from completion. Keys include normalized input, fragment, timeout, redirect limit, network policy, effective User-Agent and TTL. Results are cloned, so mutation cannot poison subsequent calls. At most 256 results of at most 65536 JSON characters each and 128 in-flight entries are retained; keys above 16384 characters bypass caching. Expiry is lazy using a monotonic clock. Errors are never cached. Compatible simultaneous calls without signals share in-flight work. Calls with a signal keep independent lifetimes while still allowing successful-result cache hits. A cache hit performs no network or DNS request. No persistent storage or cache-maintenance timers are used.
 
